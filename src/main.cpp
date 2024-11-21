@@ -10,6 +10,7 @@ unsigned char * convolution(unsigned char * buffer, int width, int hight, float 
 unsigned char * grayscale(unsigned char * buffer, int length, float gw, float rw, float bw);
 void applyKernel(unsigned char * buffer,unsigned char * newBuffer, int width, int height, int x, int y, float * kernel, int kwidth, int kheight);
 unsigned char * canny(unsigned char * buffer, int width, int height);
+unsigned char * halftone(unsigned char * buffer, int width, int height);
 
 int main(void)
 {
@@ -22,8 +23,7 @@ int main(void)
     int result = stbi_write_png("res/textures/grey_Lenna.png", width, height, 1, greyBuffer, width);
 
     unsigned char *cannyBuffer = canny(buffer, width, height);
-
-
+    int result = stbi_write_png("res/textures/canny_Lenna.png", width, height, 1, cannyBuffer, width);
     std::cout << result << std::endl;
     return 0;
 }
@@ -57,4 +57,40 @@ void applyKernel(unsigned char * buffer, unsigned char * newBuffer, int width, i
             newBuffer[(x + j) + (y + i) * width] = buffer[(x + j) + (y + i) * width] * kernel[i][j];
         }
     }
+}
+
+unsigned char * halftone(unsigned char * buffer, int width, int height) {
+    int length = width * height;
+    unsigned char * result = new unsigned char[length * 4];
+    for (int i = 0; i < length; i++) {
+        int row = i / width;
+        int col = i % width;
+        if (buffer[i] < 255.0 / 5) {
+            result[row * 2 * 2 * width + col * 2] = 0;
+            result[row * 2 * 2 * width + col * 2 + 1] = 0;
+            result[(row * 2 + 1) * 2 * width + col * 2] = 0;
+            result[(row * 2 + 1) * 2 * width + col * 2 + 1] = 0;
+        } else if (buffer[i] >= 255.0 / 5 && buffer[i] < 255.0 / 5 * 2 ) {
+            result[row * 2 * 2 * width + col * 2] = 0;
+            result[row * 2 * 2 * width + col * 2 + 1] = 0;
+            result[(row * 2 + 1) * 2 * width + col * 2] = 255;
+            result[(row * 2 + 1) * 2 * width + col * 2 + 1] = 0;
+        } else if (buffer[i] >= 255.0 / 5 * 2 && buffer[i] < 255.0 / 5 * 3) {
+            result[row * 2 * 2 * width + col * 2] = 255;
+            result[row * 2 * 2 * width + col * 2 + 1] = 0;
+            result[(row * 2 + 1) * 2 * width + col * 2] = 255;
+            result[(row * 2 + 1) * 2 * width + col * 2 + 1] = 0;
+        } else if (buffer[i] >= 255.0 / 5 * 3 && buffer[i] < 255.0 / 5 * 4) {
+            result[row * 2 * 2 * width + col * 2] = 0;
+            result[row * 2 * 2 * width + col * 2 + 1] = 255;
+            result[(row * 2 + 1) * 2 * width + col * 2] = 255;
+            result[(row * 2 + 1) * 2 * width + col * 2 + 1] = 255;
+        } else if (buffer[i] >= 255.0 / 5 * 4) {
+            result[row * 2 * 2 * width + col * 2] = 255;
+            result[row * 2 * 2 * width + col * 2 + 1] = 255;
+            result[(row * 2 + 1) * 2 * width + col * 2] = 255;
+            result[(row * 2 + 1) * 2 * width + col * 2 + 1] = 255;
+        }
+    }
+    return result;
 }
