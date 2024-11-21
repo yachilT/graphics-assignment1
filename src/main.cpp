@@ -6,9 +6,9 @@
 #include <iostream>
 
 
-unsigned char * convolution(unsigned char * buffer, int width, int hight, float ** kernel, int kwidth, int klength);
+unsigned char * convolution(unsigned char * buffer, int width, int height, float * kernel, int kwidth, int kheight, float norm);
 unsigned char * grayscale(unsigned char * buffer, int length, float gw, float rw, float bw);
-void applyKernel(unsigned char * buffer,unsigned char * newBuffer, int width, int height, int x, int y, float * kernel, int kwidth, int kheight);
+void applyKernel(unsigned char * buffer,unsigned char * newBuffer, int width, int height, int x, int y, float * kernel, int kwidth, int kheight, float norm);
 unsigned char * canny(unsigned char * buffer, int width, int height);
 unsigned char * halftone(unsigned char * buffer, int width, int height);
 
@@ -22,8 +22,8 @@ int main(void)
     unsigned char *greyBuffer = grayscale(buffer, width * height, 0.2989, 0.5870, 0.1140);
     int result = stbi_write_png("res/textures/grey_Lenna.png", width, height, 1, greyBuffer, width);
 
-    unsigned char *cannyBuffer = canny(buffer, width, height);
-    int result = stbi_write_png("res/textures/canny_Lenna.png", width, height, 1, cannyBuffer, width);
+    unsigned char *cannyBuffer = canny(greyBuffer, width, height);
+    result = result + stbi_write_png("res/textures/canny_Lenna.png", width, height, 1, cannyBuffer, width);
     std::cout << result << std::endl;
     return 0;
 }
@@ -38,25 +38,30 @@ unsigned char * grayscale(unsigned char * buffer, int length, float rw, float gw
 
 unsigned char * canny(unsigned char* buffer, int width, int height){
     float xSobel[] = {1,0,-1, 2,0,-2, 1,0,-1};
-    return convolution(buffer, width, height, xSobel, 3, 3);
+    return convolution(buffer, width, height, xSobel, 3, 3, 9);
 }
 
-unsigned char * convolution(unsigned char * buffer, int width, int height, float * kernel, int kwidth, int kheight){
+unsigned char * convolution(unsigned char * buffer, int width, int height, float * kernel, int kwidth, int kheight, float norm){
     unsigned char * newBuffer = new unsigned char[width*height];
     for(int i = kheight/2; i < height - kheight/2; i++){
         for(int j = kwidth/2; j < width - kwidth/2; j++){
-            applyKernel(buffer, newBuffer,width, height, j, i, kernel, kwidth, kheight);
+            applyKernel(buffer, newBuffer,width, height, j, i, kernel, kwidth, kheight, norm);
         }
     }
+
     return newBuffer;
 }
 
-void applyKernel(unsigned char * buffer, unsigned char * newBuffer, int width, int length, int x, int y, float ** kernel, int kwidth, int klength){
-    for(int i = 0; i < klength; i++){
+void applyKernel(unsigned char * buffer, unsigned char * newBuffer, int width, int height, int x, int y, float * kernel, int kwidth, int kheight, float norm){
+    float sum = 0;
+    for(int i = 0; i < kheight; i++){
         for(int j = 0; j < kwidth; j++){
-            newBuffer[(x + j) + (y + i) * width] = buffer[(x + j) + (y + i) * width] * kernel[i][j];
+            sum += (buffer[(x + j - kwidth/2) + (y + i - kheight) * width]) * kernel[j + i * kwidth];
         }
     }
+    newBuffer[x + y * width] = sum / norm;
+    newBuffer[x + y * width] = newBuffer[x + y * width] > 255 ? 255 : newBuffer[x + y * width];
+    newBuffer[x + y * width] = newBuffer[x + y * width] < 0 ? 0 : newBuffer[x + y * width];  
 }
 
 unsigned char * halftone(unsigned char * buffer, int width, int height) {
