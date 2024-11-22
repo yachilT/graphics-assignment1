@@ -59,9 +59,10 @@ void applyKernel(unsigned char * buffer, unsigned char * newBuffer, int width, i
             sum += (buffer[(x + j - kwidth/2) + (y + i - kheight) * width]) * kernel[j + i * kwidth];
         }
     }
-    newBuffer[x + y * width] = sum / norm;
-    newBuffer[x + y * width] = newBuffer[x + y * width] > 255 ? 255 : newBuffer[x + y * width];
-    newBuffer[x + y * width] = newBuffer[x + y * width] < 0 ? 0 : newBuffer[x + y * width];  
+    sum = sum / norm;
+    sum = sum > 255 ? 255 : sum;
+    sum = sum < 0 ? 0 : sum;  
+    newBuffer[x + y * width] = sum;
 }
 
 unsigned char * halftone(unsigned char * buffer, int width, int height) {
