@@ -20,11 +20,14 @@ int main(void)
     int req_comps = 4;
     unsigned char * buffer = stbi_load(filepath.c_str(), &width, &height, &comps, req_comps);
 
+
     unsigned char *greyBuffer = grayscale(buffer, width * height, 0.2989, 0.5870, 0.1140);
     int result = stbi_write_png("res/textures/grey_Lenna.png", width, height, 1, greyBuffer, width);
 
     unsigned char *cannyBuffer = canny(greyBuffer, width, height, 2);
     result = result + stbi_write_png("res/textures/canny_Lenna.png", width, height, 1, cannyBuffer, width);
+    unsigned char * resBuff = halftone(greyBuffer, width, height);
+    result += stbi_write_png("res/textures/Halftone.png", width * 2, height * 2, 1, resBuff, width * 2);
     std::cout << result << std::endl;
     return 0;
 }
