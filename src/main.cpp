@@ -1,7 +1,6 @@
-#define STB_IMAGE_IMPLEMENTATION
-#define STB_IMAGE_WRITE_IMPLEMENTATION
 #include <stb/stb_image.h>
 #include <stb/stb_image_write.h>
+#include <cmath>
 
 #include <iostream>
 
@@ -48,6 +47,8 @@ unsigned char * canny(unsigned char* buffer, int width, int height, float scale)
     unsigned char* yConv = convolution(buffer, width, height, ySobel, 3, 3, 4.0/scale);
     unsigned char* imageGradients = new unsigned char[width * height];
     float* imageAngels = new float[width * height];
+    float vecX = 0;    
+    float vecY = 0;
 
     for(int i = 1; i < height - 1; i++){
         for(int j = 1; j < width - 1; j++){
@@ -58,6 +59,8 @@ unsigned char * canny(unsigned char* buffer, int width, int height, float scale)
 
     for(int i = 1; i < height - 1; i++){
         for(int j = 1; j < width - 1; j++){
+            vecX = std::sin(imageAngels[j + i * width]) * std::sqrt(2);
+            vecY = std::cos(imageAngels[j + i * width]) * std::sqrt(2);
             
         }
     }
