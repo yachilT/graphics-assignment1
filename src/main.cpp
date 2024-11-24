@@ -3,7 +3,9 @@
 #include <cmath>
 
 #include <iostream>
-
+#define NON_RELEVANT 0
+#define WEAK 1
+#define STRONG 2
 
 unsigned char * convolution(unsigned char * buffer, int width, int height, float * kernel, int kwidth, int kheight, float norm);
 unsigned char * grayscale(unsigned char * buffer, int length, float gw, float rw, float bw);
@@ -11,6 +13,7 @@ void applyKernel(unsigned char * buffer, unsigned char * newBuffer, int width, i
 unsigned char * canny(unsigned char * buffer, int width, int height, float scale);
 unsigned char * halftone(unsigned char * buffer, int width, int height);
 float clipPixel(float p);
+int doubleThreshhldingPixel(unsigned char p, int lower, int upper);
 
 int main(void)
 {
@@ -23,7 +26,7 @@ int main(void)
     unsigned char *greyBuffer = grayscale(buffer, width * height, 0.2989, 0.5870, 0.1140);
     int result = stbi_write_png("res/textures/grey_Lenna.png", width, height, 1, greyBuffer, width);
 
-    unsigned char *cannyBuffer = canny(greyBuffer, width, height, 2);
+    unsigned char *cannyBuffer = canny(greyBuffer, width, height, 1.5);
     result = result + stbi_write_png("res/textures/canny_Lenna.png", width, height, 1, cannyBuffer, width);
     unsigned char * resBuff = halftone(greyBuffer, width, height);
     result += stbi_write_png("res/textures/Halftone.png", width * 2, height * 2, 1, resBuff, width * 2);
@@ -42,13 +45,21 @@ unsigned char * grayscale(unsigned char * buffer, int length, float rw, float gw
 unsigned char * canny(unsigned char* buffer, int width, int height, float scale){
     float xSobel[] = {1,0,-1, 2,0,-2, 1,0,-1};
     float ySobel[] = {1,2,1, 0,0,0, -1,-2,-1};
+    float xDirv[] = {0,-1,1};
+    float yDirv[] = {0,-1,1};
 
-    unsigned char* xConv = convolution(buffer, width, height, xSobel, 3, 3, 4.0/scale);
-    unsigned char* yConv = convolution(buffer, width, height, ySobel, 3, 3, 4.0/scale);
+    unsigned char* xConv = convolution(buffer, width, height, xSobel, 3, 3, 9.0/scale);
+    unsigned char* yConv = convolution(buffer, width, height, ySobel, 3, 3, 9.0/scale);
     unsigned char* imageGradients = new unsigned char[width * height];
+    unsigned char* imageOutlines = new unsigned char[width * height];
+    int *pixelStrength = new int[width * height];
     float* imageAngels = new float[width * height];
-    float vecX = 0;    
-    float vecY = 0;
+    int vecXSign = 0;    
+    int vecYSign = 0;
+    unsigned char currPixel = 0;
+    unsigned char posPixel = 0;
+    unsigned char negPixel = 0;
+
 
     for(int i = 1; i < height - 1; i++){
         for(int j = 1; j < width - 1; j++){
@@ -59,15 +70,61 @@ unsigned char * canny(unsigned char* buffer, int width, int height, float scale)
 
     for(int i = 1; i < height - 1; i++){
         for(int j = 1; j < width - 1; j++){
-            vecX = std::sin(imageAngels[j + i * width]) * std::sqrt(2);
-            vecY = std::cos(imageAngels[j + i * width]) * std::sqrt(2);
-            
+            vecXSign = std::signbit(std::sin(imageAngels[j + i * width]) * std::sqrt(2)) ? -1 : 1;
+            vecYSign = std::signbit(::cos(imageAngels[j + i * width]) * std::sqrt(2)) ? -1 : 1;
+
+            currPixel = imageGradients[j + i * width];
+            posPixel = imageGradients[j+vecXSign + (i+vecYSign) * width];
+            negPixel = imageGradients[j-vecXSign + (i-vecYSign) * width];
+
+            if(posPixel < currPixel && negPixel < currPixel){
+                imageOutlines[j + (i) * width] = currPixel;
+                imageOutlines[j+vecXSign + (i+vecYSign) * width] = 0;
+                imageOutlines[j-vecXSign + (i-vecYSign) * width] = 0;
+            }
+            else if(currPixel < posPixel && negPixel < posPixel){
+                imageOutlines[j + (i) * width] = 0;
+                imageOutlines[j+vecXSign + (i+vecYSign) * width] = posPixel;
+                imageOutlines[j-vecXSign + (i-vecYSign) * width] = 0;
+            }
+            else if(currPixel < negPixel && posPixel < negPixel){
+                imageOutlines[j + (i) * width] = 0;
+                imageOutlines[j+vecXSign + (i+vecYSign) * width] = 0;
+                imageOutlines[j-vecXSign + (i-vecYSign) * width] = negPixel;
+            }
+
+            pixelStrength[j + i * width] = doubleThreshhldingPixel(imageOutlines[j + i * width], 0.1 * 255, 0.7 * 255);
         }
     }
 
-    return imageGradients;
+    for(int i = 1; i < height - 1; i++){
+        for(int j = 1; j < width - 1; j++){
+            if(pixelStrength[j + i * width] == NON_RELEVANT) imageOutlines[j + i * width] = 0;
+            if(pixelStrength[j + i * width] == STRONG) imageOutlines[j + i * width] = 255;
+            if(pixelStrength[j + i * width] == WEAK){
+                if(pixelStrength[j-1 + (i-1)*width] == STRONG ||
+                    pixelStrength[j + (i-1)*width] == STRONG ||
+                    pixelStrength[j+1 + (i-1)*width] == STRONG ||
+                    pixelStrength[j-1 + (i)*width] == STRONG ||
+                    pixelStrength[j+1 + (i)*width] == STRONG ||
+                    pixelStrength[j-1 + (i+1)*width] == STRONG ||
+                    pixelStrength[j + (i+1)*width] == STRONG ||
+                    pixelStrength[j+1 + (i+1)*width] == STRONG)  imageOutlines[j + i * width] = 255;
+                else imageOutlines[j + i * width] = 0;
+            }
+        }
+    }
+
+    return imageOutlines;
 }
 
+// 0 - non relevant, 1 - weak, 2 - strong
+int doubleThreshhldingPixel(unsigned char p, int lower, int upper){
+    if(p < lower) return NON_RELEVANT;
+    else if(p >= lower && p <= upper) return WEAK;
+    else return STRONG;
+}
+ 
 unsigned char * convolution(unsigned char * buffer, int width, int height, float * kernel, int kwidth, int kheight, float norm){
     unsigned char * newBuffer = new unsigned char[width*height];
     int h = (kheight - 1)/2;
