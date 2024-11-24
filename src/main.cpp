@@ -16,6 +16,7 @@ int main(void)
     unsigned char newBuffer[width * height];
 
     grayscale(buffer, newBuffer, width * height, 0.2989, 0.5870, 0.1140);
+    stbi_write_png("res/textures/grayscale.png", width, height, 1, newBuffer, width);
     unsigned char * resBuff = halftone(newBuffer, width, height);
     int result = stbi_write_png("res/textures/new_Lenna.png", width * 2, height * 2, 1, resBuff, width * 2);
     std::cout << result << std::endl;
