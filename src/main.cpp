@@ -9,7 +9,7 @@
 unsigned char * convolution(unsigned char * buffer, int width, int height, float * kernel, int kwidth, int kheight, float norm);
 unsigned char * grayscale(unsigned char * buffer, int length, float gw, float rw, float bw);
 void applyKernel(unsigned char * buffer,unsigned char * newBuffer, int width, int height, int x, int y, float * kernel, int kwidth, int kheight, float norm);
-unsigned char * canny(unsigned char * buffer, int width, int height);
+unsigned char * canny(unsigned char * buffer, int width, int height, float scale);
 unsigned char * halftone(unsigned char * buffer, int width, int height);
 float capPixel(float p);
 
@@ -23,7 +23,7 @@ int main(void)
     unsigned char *greyBuffer = grayscale(buffer, width * height, 0.2989, 0.5870, 0.1140);
     int result = stbi_write_png("res/textures/grey_Lenna.png", width, height, 1, greyBuffer, width);
 
-    unsigned char *cannyBuffer = canny(greyBuffer, width, height);
+    unsigned char *cannyBuffer = canny(greyBuffer, width, height, 5);
     result = result + stbi_write_png("res/textures/canny_Lenna.png", width, height, 1, cannyBuffer, width);
     std::cout << result << std::endl;
     return 0;
@@ -37,25 +37,30 @@ unsigned char * grayscale(unsigned char * buffer, int length, float rw, float gw
     return newBuffer;
 }
 
-unsigned char * canny(unsigned char* buffer, int width, int height){
+unsigned char * canny(unsigned char* buffer, int width, int height, float scale){
     float xSobel[] = {1,0,-1, 2,0,-2, 1,0,-1};
     float ySobel[] = {1,2,1, 0,0,0, -1,-2,-1};
 
     unsigned char* xConv = convolution(buffer, width, height, xSobel, 3, 3, 9);
     unsigned char* yConv = convolution(buffer, width, height, ySobel, 3, 3, 9);
-    unsigned char* outlineImage = new unsigned char[width * height];
+    unsigned char* imageGradients = new unsigned char[width * height];
+    float* imageAngels = new float[width * height];
 
     for(int i = 1; i < height - 1; i++){
         for(int j = 1; j < width - 1; j++){
-            outlineImage = std::sqrt(std::pow((float)(int)xConv, 2) + std::pow((float)(int)yConv, 2))
+            imageGradients[i * width + j] = scale * std::sqrt(std::pow((float)(int)xConv[i * width + j], 2) + std::pow((float)(int)yConv[i * width + j], 2));
         }
     }
+
+    return imageGradients;
 }
 
 unsigned char * convolution(unsigned char * buffer, int width, int height, float * kernel, int kwidth, int kheight, float norm){
     unsigned char * newBuffer = new unsigned char[width*height];
-    for(int i = kheight/2; i < height - kheight/2; i++){
-        for(int j = kwidth/2; j < width - kwidth/2; j++){
+    int h = (kheight - 1)/2;
+    int w = (kwidth - 1)/2;
+    for(int i = h; i < height - h; i++){
+        for(int j = w; j < width - w; j++){
             applyKernel(buffer, newBuffer,width, height, j, i, kernel, kwidth, kheight, norm);
         }
     }
