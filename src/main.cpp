@@ -55,6 +55,7 @@ unsigned char * canny(unsigned char* buffer, int width, int height, float scale)
     unsigned char* imageOutlines = new unsigned char[width * height];
     int *pixelStrength = new int[width * height];
     float* imageAngels = new float[width * height];
+    float currAngel = 0;
     int vecXSign = 0;    
     int vecYSign = 0;
     unsigned char currPixel = 0;
@@ -74,9 +75,28 @@ unsigned char * canny(unsigned char* buffer, int width, int height, float scale)
     //Non-max suppresion
     for(int i = 1; i < height - 1; i++){
         for(int j = 1; j < width - 1; j++){
-            //TODO I don't think the angels are correct
-            vecXSign = std::signbit(std::sin(imageAngels[j + i * width]) * std::sqrt(2)) ? -1 : 1;
-            vecYSign = std::signbit(std::cos(imageAngels[j + i * width]) * std::sqrt(2)) ? -1 : 1;
+            currAngel = imageAngels[j + i * width] < 0 ? imageAngels[j + i * width] + 360 : imageAngels[j + i * width];
+
+            //0 degrees
+            if((currAngel > 337.5 ||  currAngel <= 22.5) || (currAngel > 157.5 && currAngel <= 202.5)){
+                vecXSign = 1;
+                vecYSign = 0;
+            }
+            //45 degrees
+            else if((currAngel > 22.5 ||  currAngel <= 67.5) || (currAngel > 202.5 && currAngel <= 247.5)){
+                vecXSign = 1;
+                vecYSign = -1;
+            }
+            //90 degrees
+            else if((currAngel > 67.5 ||  currAngel <= 112.5) || (currAngel > 247.5 && currAngel <= 292.5)){
+                vecXSign = 0;
+                vecYSign = 1;
+            }
+            //135 degrees
+            else if((currAngel > 112.5 ||  currAngel <= 157.5) || (currAngel > 292.5 && currAngel <= 337.5)){
+                vecXSign = 1;
+                vecYSign = 1;
+            }
 
             currPixel = imageGradients[j + i * width];
             posPixel = imageGradients[j+vecXSign + (i+vecYSign) * width];
