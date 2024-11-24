@@ -45,11 +45,12 @@ unsigned char * grayscale(unsigned char * buffer, int length, float rw, float gw
 unsigned char * canny(unsigned char* buffer, int width, int height, float scale){
     float xSobel[] = {1,0,-1, 2,0,-2, 1,0,-1};
     float ySobel[] = {1,2,1, 0,0,0, -1,-2,-1};
-    float xDirv[] = {0,-1,1};
-    float yDirv[] = {0,-1,1};
-
-    unsigned char* xConv = convolution(buffer, width, height, xSobel, 3, 3, 4.0/scale);
-    unsigned char* yConv = convolution(buffer, width, height, ySobel, 3, 3, 4.0/scale);
+    int kheight = 3;
+    int kwidth = 3;
+    int h = (kheight - 1)/2;
+    int w = (kwidth - 1)/2;
+    unsigned char* xConv = new unsigned char[width * height];
+    unsigned char* yConv = new unsigned char[width * height];
     unsigned char* imageGradients = new unsigned char[width * height];
     unsigned char* imageOutlines = new unsigned char[width * height];
     int *pixelStrength = new int[width * height];
@@ -60,18 +61,22 @@ unsigned char * canny(unsigned char* buffer, int width, int height, float scale)
     unsigned char posPixel = 0;
     unsigned char negPixel = 0;
 
-
-    for(int i = 1; i < height - 1; i++){
-        for(int j = 1; j < width - 1; j++){
+    //finding gradient and angels
+    for(int i = h; i < height - h; i++){
+        for(int j = w; j < width - w; j++){
+            applyKernel(buffer, xConv,width, j, i, xSobel, kwidth, w, h, 1/scale);
+            applyKernel(buffer, yConv,width, j, i, ySobel, kwidth, w, h, 1/scale);
             imageGradients[i * width + j] = std::sqrt(xConv[i * width + j] * xConv[i * width + j] + yConv[i * width + j] * yConv[i * width + j]);
             imageAngels[j + i * width] = std::atan2(xConv[j + i * width], yConv[j + i * width]);
         }
     }
 
+    //Non-max suppresion
     for(int i = 1; i < height - 1; i++){
         for(int j = 1; j < width - 1; j++){
+            //TODO I don't think the angels are correct
             vecXSign = std::signbit(std::sin(imageAngels[j + i * width]) * std::sqrt(2)) ? -1 : 1;
-            vecYSign = std::signbit(::cos(imageAngels[j + i * width]) * std::sqrt(2)) ? -1 : 1;
+            vecYSign = std::signbit(std::cos(imageAngels[j + i * width]) * std::sqrt(2)) ? -1 : 1;
 
             currPixel = imageGradients[j + i * width];
             posPixel = imageGradients[j+vecXSign + (i+vecYSign) * width];
@@ -93,10 +98,12 @@ unsigned char * canny(unsigned char* buffer, int width, int height, float scale)
                 imageOutlines[j-vecXSign + (i-vecYSign) * width] = negPixel;
             }
 
+            //Double threashholding
             pixelStrength[j + i * width] = doubleThreshhldingPixel(imageOutlines[j + i * width], 0.1 * 255, 0.7 * 255);
         }
     }
 
+    //Hysteresis
     for(int i = 1; i < height - 1; i++){
         for(int j = 1; j < width - 1; j++){
             if(pixelStrength[j + i * width] == NON_RELEVANT) imageOutlines[j + i * width] = 0;
@@ -125,6 +132,7 @@ int doubleThreshhldingPixel(unsigned char p, int lower, int upper){
     else return STRONG;
 }
  
+//working but only give convolution
 unsigned char * convolution(unsigned char * buffer, int width, int height, float * kernel, int kwidth, int kheight, float norm){
     unsigned char * newBuffer = new unsigned char[width*height];
     int h = (kheight - 1)/2;
