@@ -26,7 +26,7 @@ int main(void)
     unsigned char *greyBuffer = grayscale(buffer, width * height, 0.2989, 0.5870, 0.1140);
     int result = stbi_write_png("res/textures/grey_Lenna.png", width, height, 1, greyBuffer, width);
 
-    unsigned char *cannyBuffer = canny(greyBuffer, width, height, 1.5);
+    unsigned char *cannyBuffer = canny(greyBuffer, width, height, 1);
     result = result + stbi_write_png("res/textures/canny_Lenna.png", width, height, 1, cannyBuffer, width);
     unsigned char * resBuff = halftone(greyBuffer, width, height);
     result += stbi_write_png("res/textures/Halftone.png", width * 2, height * 2, 1, resBuff, width * 2);
@@ -48,8 +48,8 @@ unsigned char * canny(unsigned char* buffer, int width, int height, float scale)
     float xDirv[] = {0,-1,1};
     float yDirv[] = {0,-1,1};
 
-    unsigned char* xConv = convolution(buffer, width, height, xSobel, 3, 3, 9.0/scale);
-    unsigned char* yConv = convolution(buffer, width, height, ySobel, 3, 3, 9.0/scale);
+    unsigned char* xConv = convolution(buffer, width, height, xSobel, 3, 3, 4.0/scale);
+    unsigned char* yConv = convolution(buffer, width, height, ySobel, 3, 3, 4.0/scale);
     unsigned char* imageGradients = new unsigned char[width * height];
     unsigned char* imageOutlines = new unsigned char[width * height];
     int *pixelStrength = new int[width * height];
@@ -63,7 +63,7 @@ unsigned char * canny(unsigned char* buffer, int width, int height, float scale)
 
     for(int i = 1; i < height - 1; i++){
         for(int j = 1; j < width - 1; j++){
-            imageGradients[i * width + j] = std::sqrt(std::pow((float)(int)xConv[i * width + j], 2) + std::pow((float)(int)yConv[i * width + j], 2));
+            imageGradients[i * width + j] = std::sqrt(xConv[i * width + j] * xConv[i * width + j] + yConv[i * width + j] * yConv[i * width + j]);
             imageAngels[j + i * width] = std::atan2(xConv[j + i * width], yConv[j + i * width]);
         }
     }
