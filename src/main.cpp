@@ -1,4 +1,7 @@
+#define STB_IMAGE_IMPLEMENTATION
 #include <stb/stb_image.h>
+
+#define STB_IMAGE_WRITE_IMPLEMENTATION
 #include <stb/stb_image_write.h>
 #include <cmath>
 
@@ -6,6 +9,8 @@
 #define NON_RELEVANT 0
 #define WEAK 1
 #define STRONG 2
+
+#define SCALE_FACTOR 4
 
 unsigned char * convolution(unsigned char * buffer, int width, int height, float * kernel, int kwidth, int kheight, float norm);
 unsigned char * grayscale(unsigned char * buffer, int length, float gw, float rw, float bw);
@@ -68,7 +73,7 @@ unsigned char * canny(unsigned char* buffer, int width, int height, float scale)
             applyKernel(buffer, xConv,width, j, i, xSobel, kwidth, w, h, 1/scale);
             applyKernel(buffer, yConv,width, j, i, ySobel, kwidth, w, h, 1/scale);
             imageGradients[i * width + j] = std::sqrt(xConv[i * width + j] * xConv[i * width + j] + yConv[i * width + j] * yConv[i * width + j]);
-            imageAngels[j + i * width] = std::atan2(xConv[j + i * width], yConv[j + i * width]);
+            imageAngels[j + i * width] = std::atan2(xConv[j + i * width], yConv[j + i * width]); // i think it should be reversed?
         }
     }
 
@@ -194,7 +199,7 @@ unsigned char * halftone(unsigned char * buffer, int width, int height) {
             result[(row * 2 + 1) * 2 * width + col * 2] = 0;
             result[(row * 2 + 1) * 2 * width + col * 2 + 1] = 0;
         } else if (buffer[i] >= 255.0 / 5 && buffer[i] < 255.0 / 5 * 2 ) {
-            result[row * 2 * 2 * width + col * 2] = 0;
+            result[row * 2 * 2 * width + col * 2] = 0; 
             result[row * 2 * 2 * width + col * 2 + 1] = 0;
             result[(row * 2 + 1) * 2 * width + col * 2] = 255;
             result[(row * 2 + 1) * 2 * width + col * 2 + 1] = 0;
