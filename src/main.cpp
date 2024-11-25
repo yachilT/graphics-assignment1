@@ -55,6 +55,9 @@ unsigned char * canny(unsigned char* buffer, int width, int height, float scale)
     float xSobel[] = {1,0,-1, 2,0,-2, 1,0,-1};
     float ySobel[] = {1,2,1, 0,0,0, -1,-2,-1};
     float gausian[] = {1,2,1 ,2,4,2, 1,2,1};
+
+    float xSobelGaussian[] = {}; // sobel derivative of gaussian
+    float ySobelGaussian[] = {}
     int kheight = 3;
     int kwidth = 3;
     int h = (kheight - 1)/2;
@@ -82,9 +85,11 @@ unsigned char * canny(unsigned char* buffer, int width, int height, float scale)
             applyKernel(blurredImage, xConv,width, j, i, xSobel, kwidth, w, h, 1/scale);
             applyKernel(blurredImage, yConv,width, j, i, ySobel, kwidth, w, h, 1/scale);
             imageGradients[i * width + j] = std::sqrt(xConv[i * width + j] * xConv[i * width + j] + yConv[i * width + j] * yConv[i * width + j]);
-            imageAngels[j + i * width] = std::atan2(xConv[j + i * width], yConv[j + i * width]); // i think it should be reversed?
+            imageAngels[j + i * width] = std::atan2(yConv[j + i * width], xConv[j + i * width]); // i think it should be reversed?
         }
     }
+
+    stbi_write_png("res/textures/grad_Lenna.png", width, height, 1, imageGradients, width);
 
     //Non-max suppresion
     for(int i = 1; i < height - 1; i++){
@@ -153,7 +158,10 @@ unsigned char * canny(unsigned char* buffer, int width, int height, float scale)
                     pixelStrength[j+1 + (i)*width] == STRONG ||
                     pixelStrength[j-1 + (i+1)*width] == STRONG ||
                     pixelStrength[j + (i+1)*width] == STRONG ||
-                    pixelStrength[j+1 + (i+1)*width] == STRONG)  imageOutlines[j + i * width] = 255;
+                    pixelStrength[j+1 + (i+1)*width] == STRONG) {  
+                        imageOutlines[j + i * width] = 255;
+                        pixelStrength[j + i * width] = STRONG;
+                    }
                 else imageOutlines[j + i * width] = 0;
             }
         }
