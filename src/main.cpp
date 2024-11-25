@@ -85,7 +85,7 @@ unsigned char * canny(unsigned char* buffer, int width, int height, float scale)
     unsigned char negPixel = 0;
 
     //reducing noise
-    //blurredImage = convolution(buffer, blurredImage, width, height, gaussian, kwidth, kheight, 16);
+    blurredImage = convolution(buffer, blurredImage, width, height, gaussian, kwidth, kheight, 16);
     
     //finding gradient and angels
     for(int i = 0; i < height; i++){
@@ -95,7 +95,7 @@ unsigned char * canny(unsigned char* buffer, int width, int height, float scale)
                 imageAngels[j + i * width] = 0;
                 continue;
             }
-            applyKernel(buffer, xConv,width, j, i, xSobel, kwidth, kheight, scale);
+            applyKernel(buffer, x,width, j, i, xSobel, kwidth, kheight, scale);
             applyKernel(buffer, yConv,width, j, i, ySobel, kwidth, kheight, scale);
             imageGradients[i * width + j] = clipPixel(std::sqrt((int)xConv[i * width + j] * xConv[i * width + j] + (int)yConv[i * width + j] * yConv[i * width + j]));
             imageAngels[j + i * width] = std::atan2(yConv[j + i * width], xConv[j + i * width]); 
@@ -204,7 +204,7 @@ void applyKernel(unsigned char * buffer, unsigned char * newBuffer, int width, i
     float sum = 0;
     for(int i = 0; i < kheight; i++){
         for(int j = 0; j < kwidth; j++){
-            sum += (buffer[x - (kwidth-1)/2 + (y-(kheight-1)/2) * width]) * kernel[j + (i) * kwidth];
+            sum += (buffer[x-(kwidth-1)/2+j + (y-(kheight-1)/2+i) * width]) * kernel[j + (i) * kwidth];
         }
     }
     newBuffer[x + y * width] = clipPixel(sum * norm);
