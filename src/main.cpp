@@ -54,10 +54,10 @@ unsigned char * greyscale(unsigned char * buffer, int length, float rw, float gw
 unsigned char * canny(unsigned char* buffer, int width, int height, float scale){
     float xSobel[] = {1,0,-1, 2,0,-2, 1,0,-1};
     float ySobel[] = {1,2,1, 0,0,0, -1,-2,-1};
-    float gausian[] = {1,2,1 ,2,4,2, 1,2,1};
+    float gaussian[] = {1,2,1 ,2,4,2, 1,2,1};
 
-    float xSobelGaussian[] = {}; // sobel derivative of gaussian
-    float ySobelGaussian[] = {}
+    float xGausDirv[] = {1};
+    float yGausDirv[] = {1};
     int kheight = 3;
     int kwidth = 3;
     int h = (kheight - 1)/2;
@@ -76,16 +76,26 @@ unsigned char * canny(unsigned char* buffer, int width, int height, float scale)
     unsigned char posPixel = 0;
     unsigned char negPixel = 0;
 
+    //removing frame
+    for(int i = 0; i < height; i++){
+        buffer[i * width] = 0;
+        buffer[width-1 + i * width] = 0;
+    }
+    for(int j = 0; j < width; j++){
+        buffer[j] = 0;
+        buffer[j + (height-1)*width] = 0;
+    }
+    stbi_write_png("res/textures/noframe_Lenna.png", width, height, 1, buffer, width);
     //reducing noise
-    blurredImage = convolution(buffer, blurredImage, width, height, gausian, kwidth, kheight, 16);
-
+    //blurredImage = convolution(buffer, blurredImage, width, height, gausian, kwidth, kheight, 16);
+    
     //finding gradient and angels
     for(int i = h; i < height - h; i++){
         for(int j = w; j < width - w; j++){
-            applyKernel(blurredImage, xConv,width, j, i, xSobel, kwidth, w, h, 1/scale);
-            applyKernel(blurredImage, yConv,width, j, i, ySobel, kwidth, w, h, 1/scale);
+            applyKernel(buffer, xConv,width, j, i, xSobel, kwidth, w, h, 4/scale);
+            applyKernel(buffer, yConv,width, j, i, ySobel, kwidth, w, h, 4/scale);
             imageGradients[i * width + j] = std::sqrt(xConv[i * width + j] * xConv[i * width + j] + yConv[i * width + j] * yConv[i * width + j]);
-            imageAngels[j + i * width] = std::atan2(yConv[j + i * width], xConv[j + i * width]); // i think it should be reversed?
+            imageAngels[j + i * width] = std::atan2(yConv[j + i * width], xConv[j + i * width]); 
         }
     }
 
@@ -144,7 +154,7 @@ unsigned char * canny(unsigned char* buffer, int width, int height, float scale)
             pixelStrength[j + i * width] = doubleThreshhldingPixel(imageOutlines[j + i * width], 0.1 * 255, 0.7 * 255);
         }
     }
-
+    
     //Hysteresis
     for(int i = 1; i < height - 1; i++){
         for(int j = 1; j < width - 1; j++){
