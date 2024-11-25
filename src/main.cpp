@@ -76,26 +76,22 @@ unsigned char * canny(unsigned char* buffer, int width, int height, float scale)
     unsigned char posPixel = 0;
     unsigned char negPixel = 0;
 
-    //removing frame
-    for(int i = 0; i < height; i++){
-        buffer[i * width] = 0;
-        buffer[width-1 + i * width] = 0;
-    }
-    for(int j = 0; j < width; j++){
-        buffer[j] = 0;
-        buffer[j + (height-1)*width] = 0;
-    }
-    stbi_write_png("res/textures/noframe_Lenna.png", width, height, 1, buffer, width);
     //reducing noise
     //blurredImage = convolution(buffer, blurredImage, width, height, gausian, kwidth, kheight, 16);
     
     //finding gradient and angels
-    for(int i = h; i < height - h; i++){
-        for(int j = w; j < width - w; j++){
-            applyKernel(buffer, xConv,width, j, i, xSobel, kwidth, w, h, 4/scale);
-            applyKernel(buffer, yConv,width, j, i, ySobel, kwidth, w, h, 4/scale);
-            imageGradients[i * width + j] = std::sqrt(xConv[i * width + j] * xConv[i * width + j] + yConv[i * width + j] * yConv[i * width + j]);
-            imageAngels[j + i * width] = std::atan2(yConv[j + i * width], xConv[j + i * width]); 
+    for(int i = 0; i < height; i++){
+        for(int j = 0; j < width; j++){
+            if(i < h || i > height - h || j < w || j > width - w){
+                imageGradients[j + i * width] = 0;
+                imageAngels[j + i * width] = 0;
+            }
+            else{
+                applyKernel(buffer, xConv,width, j, i, xSobel, kwidth, w, h, 4/scale);
+                applyKernel(buffer, yConv,width, j, i, ySobel, kwidth, w, h, 4/scale);
+                imageGradients[i * width + j] = std::sqrt(xConv[i * width + j] * xConv[i * width + j] + yConv[i * width + j] * yConv[i * width + j]);
+                imageAngels[j + i * width] = std::atan2(yConv[j + i * width], xConv[j + i * width]); 
+            }
         }
     }
 
@@ -213,7 +209,6 @@ void applyKernel(unsigned char * buffer, unsigned char * newBuffer, int width, i
             sum += (buffer[j + (i) * width]) * kernel[j+w-x + (i+h-y) * kwidth];
         }
     }
-    newBuffer[x + y * width] = clipPixel(sum / norm);
 }
 
 float clipPixel(float p){
