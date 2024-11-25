@@ -15,7 +15,7 @@
 
 unsigned char * convolution(unsigned char * buffer, unsigned char* newBuffer, int width, int height, float * kernel, int kwidth, int kheight, float norm);
 unsigned char * greyscale(unsigned char * buffer, int length, float gw, float rw, float bw);
-void applyKernel(unsigned char * buffer, unsigned char * newBuffer, int width, int x, int y, float * kernel, int kwidth, int w, int h, float norm);
+void applyKernel(unsigned char * buffer, unsigned char * newBuffer, int width, int x, int y, float * kernel, int kwidth, int kheight, float norm);
 unsigned char * canny(unsigned char * buffer, int width, int height, float scale);
 unsigned char * halftone(unsigned char * buffer, int width, int height);
 float clipPixel(float p);
@@ -34,7 +34,7 @@ int main(void)
     unsigned char *greyBuffer = greyscale(buffer, width * height, 0.2989, 0.5870, 0.1140);
     int result = stbi_write_png("res/textures/grey_Lenna.png", width, height, 1, greyBuffer, width);
 
-    unsigned char *cannyBuffer = canny(greyBuffer, width, height, 2);
+    unsigned char *cannyBuffer = canny(greyBuffer, width, height, CANNY_SCALE);
     result = result + stbi_write_png("res/textures/canny_Lenna.png", width, height, 1, cannyBuffer, width);
     unsigned char * halfBuff = halftone(greyBuffer, width, height);
     result += stbi_write_png("res/textures/Halftone.png", width * 2, height * 2, 1, halfBuff, width * 2);
@@ -69,7 +69,7 @@ unsigned char * canny(unsigned char* buffer, int width, int height, float scale)
     int kwidth = 3;
     int h = (kheight - 1)/2;
     int w = (kwidth - 1)/2;
-    float norm = 1.0/1;
+    float norm = 1.0;
     int *pixelStrength = new int[width * height];
     float* imageAngels = new float[width * height];
     unsigned char* blurredImage = new unsigned char[width * height];
@@ -95,13 +95,12 @@ unsigned char * canny(unsigned char* buffer, int width, int height, float scale)
                 imageAngels[j + i * width] = 0;
                 continue;
             }
-            applyKernel(buffer, xConv,width, j, i, xSobel, kwidth, w, h, scale * norm);
-            applyKernel(buffer, yConv,width, j, i, ySobel, kwidth, w, h, scale * norm);
-            imageGradients[i * width + j] = clipPixel(std::sqrt(xConv[i * width + j] * xConv[i * width + j] + yConv[i * width + j] * yConv[i * width + j]));
+            applyKernel(buffer, xConv,width, j, i, xSobel, kwidth, kheight, scale);
+            applyKernel(buffer, yConv,width, j, i, ySobel, kwidth, kheight, scale);
+            imageGradients[i * width + j] = clipPixel(std::sqrt((int)xConv[i * width + j] * xConv[i * width + j] + (int)yConv[i * width + j] * yConv[i * width + j]));
             imageAngels[j + i * width] = std::atan2(yConv[j + i * width], xConv[j + i * width]); 
         }
     }
-
     stbi_write_png("res/textures/grad_Lenna.png", width, height, 1, imageGradients, width);
 
     //Non-max suppresion
@@ -192,30 +191,28 @@ int doubleThreshhldingPixel(unsigned char p, int lower, int upper){
  
 //working but only give convolution
 unsigned char * convolution(unsigned char * buffer, unsigned char* newBuffer, int width, int height, float * kernel, int kwidth, int kheight, float norm){
-    int h = (kheight - 1)/2;
-    int w = (kwidth - 1)/2;
-    for(int i = h; i < height - h; i++){
-        for(int j = w; j < width - w; j++){
-            applyKernel(buffer, newBuffer,width, j, i, kernel, kwidth, w, h, norm);
+    for(int i = (kheight-1)/2; i < height - (kheight-1)/2; i++){
+        for(int j = (kwidth-1)/2; j < width - (kheight-1)/2; j++){
+            applyKernel(buffer, newBuffer,width, j, i, kernel, kwidth, kheight, norm);
         }
     }
 
     return newBuffer;
 }
 
-void applyKernel(unsigned char * buffer, unsigned char * newBuffer, int width, int x, int y, float * kernel, int kwidth, int w, int h, float norm){
+void applyKernel(unsigned char * buffer, unsigned char * newBuffer, int width, int x, int y, float * kernel, int kwidth, int kheight, float norm){
     float sum = 0;
-    for(int i = y-h; i <= y+h; i++){
-        for(int j = x-w; j <= x+w; j++){
-            sum += (buffer[j + (i) * width]) * kernel[j+w-x + (i+h-y) * kwidth];
+    for(int i = 0; i < kheight; i++){
+        for(int j = 0; j < kwidth; j++){
+            sum += (buffer[x - (kwidth-1)/2 + (y-(kheight-1)/2) * width]) * kernel[j + (i) * kwidth];
         }
     }
     newBuffer[x + y * width] = clipPixel(sum * norm);
 }
 
 float clipPixel(float p){
-    p = p > 255 ? 255 : p;
-    p = p < 0 ? 0 : p;  
+    if(p > 255) p = 255;
+    if(p < 0) p = 0;
     return p;
 }
 
@@ -272,7 +269,6 @@ unsigned char * fsErrorDiffDithering(unsigned char * buffer, int width, int heig
             }
         }
     }
-    std::cout << "HELLO" << std::endl;
     return result;
  }
  
