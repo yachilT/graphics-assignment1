@@ -10,7 +10,7 @@
 #define WEAK 1
 #define STRONG 2
 #define SCALE_FACTOR 4
-#define CANNY_SCALE 4
+#define CANNY_SCALE 1
 #define PIXEL_BITRATE 16
 
 unsigned char * convolution(unsigned char * buffer, unsigned char* newBuffer, int width, int height, float * kernel, int kwidth, int kheight, float norm);
@@ -85,8 +85,8 @@ unsigned char * canny(unsigned char* buffer, int width, int height, float scale)
     unsigned char negPixel = 0;
 
     //reducing noise
-    blurredImage = convolution(buffer, blurredImage, width, height, gaussian, kwidth, kheight, 1.0/16);
-    
+    convolution(buffer, blurredImage, width, height, gaussian, kwidth, kheight, 1.0/16);
+
     //finding gradient and angels
     for(int i = 0; i < height; i++){
         for(int j = 0; j < width; j++){
@@ -95,8 +95,8 @@ unsigned char * canny(unsigned char* buffer, int width, int height, float scale)
                 imageAngels[j + i * width] = 0;
                 continue;
             }
-            applyKernel(blurredImage, xConv,width, j, i, xDirv, kwidth, 1, scale);
-            applyKernel(blurredImage, yConv,width, j, i, yDirv, 1, kheight, scale);
+            applyKernel(blurredImage, xConv,width, j, i, xSobel, kwidth, kheight, scale);
+            applyKernel(blurredImage, yConv,width, j, i, ySobel, kwidth, kheight, scale);
             imageGradients[i * width + j] = clipPixel(std::sqrt((int)xConv[i * width + j] * xConv[i * width + j] + (int)yConv[i * width + j] * yConv[i * width + j]));
             imageAngels[j + i * width] = std::atan2(yConv[j + i * width], xConv[j + i * width]); 
         }
@@ -145,7 +145,7 @@ unsigned char * canny(unsigned char* buffer, int width, int height, float scale)
             }
 
             //Double threashholding
-            pixelStrength[j + i * width] = doubleThreshhldingPixel(imageOutlines[j + i * width], 0.1 * 255, 0.7 * 255);
+            pixelStrength[j + i * width] = doubleThreshhldingPixel(imageOutlines[j + i * width], 0.05 * 255, 0.5 * 255);
         }
     }
     
@@ -196,7 +196,6 @@ unsigned char * convolution(unsigned char * buffer, unsigned char* newBuffer, in
             applyKernel(buffer, newBuffer,width, j, i, kernel, kwidth, kheight, norm);
         }
     }
-
     return newBuffer;
 }
 
@@ -204,7 +203,7 @@ void applyKernel(unsigned char * buffer, unsigned char * newBuffer, int width, i
     float sum = 0;
     for(int i = 0; i < kheight; i++){
         for(int j = 0; j < kwidth; j++){
-            sum += (buffer[x-(kwidth-1)/2+j + (y-(kheight-1)/2+i) * width]) * kernel[j + (i) * kwidth];
+            sum += buffer[x-(kwidth-1)/2+j + (y-(kheight-1)/2+i) * width] * kernel[j + (i) * kwidth];
         }
     }
     newBuffer[x + y * width] = clipPixel(sum * norm);
