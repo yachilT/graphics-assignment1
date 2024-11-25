@@ -10,6 +10,7 @@
 #define WEAK 1
 #define STRONG 2
 #define SCALE_FACTOR 4
+#define CANNY_SCALE 1
 
 unsigned char * convolution(unsigned char * buffer, unsigned char* newBuffer, int width, int height, float * kernel, int kwidth, int kheight, float norm);
 unsigned char * greyscale(unsigned char * buffer, int length, float gw, float rw, float bw);
@@ -30,7 +31,7 @@ int main(void)
     unsigned char *greyBuffer = greyscale(buffer, width * height, 0.2989, 0.5870, 0.1140);
     int result = stbi_write_png("res/textures/grey_Lenna.png", width, height, 1, greyBuffer, width);
 
-    unsigned char *cannyBuffer = canny(greyBuffer, width, height, 1);
+    unsigned char *cannyBuffer = canny(greyBuffer, width, height, 2);
     result = result + stbi_write_png("res/textures/canny_Lenna.png", width, height, 1, cannyBuffer, width);
     unsigned char * halfBuff = halftone(greyBuffer, width, height);
     result += stbi_write_png("res/textures/Halftone.png", width * 2, height * 2, 1, halfBuff, width * 2);
@@ -55,13 +56,14 @@ unsigned char * canny(unsigned char* buffer, int width, int height, float scale)
     float xSobel[] = {1,0,-1, 2,0,-2, 1,0,-1};
     float ySobel[] = {1,2,1, 0,0,0, -1,-2,-1};
     float gaussian[] = {1,2,1 ,2,4,2, 1,2,1};
+    float xDirv[] = {0,-1,1};
+    float yDirv[] = {0,-1,1};
 
-    float xGausDirv[] = {1};
-    float yGausDirv[] = {1};
     int kheight = 3;
     int kwidth = 3;
     int h = (kheight - 1)/2;
     int w = (kwidth - 1)/2;
+    float norm = 1.0/1;
     int *pixelStrength = new int[width * height];
     float* imageAngels = new float[width * height];
     unsigned char* blurredImage = new unsigned char[width * height];
@@ -77,31 +79,34 @@ unsigned char * canny(unsigned char* buffer, int width, int height, float scale)
     unsigned char negPixel = 0;
 
     //reducing noise
-    //blurredImage = convolution(buffer, blurredImage, width, height, gausian, kwidth, kheight, 16);
+    //blurredImage = convolution(buffer, blurredImage, width, height, gaussian, kwidth, kheight, 16);
     
     //finding gradient and angels
     for(int i = 0; i < height; i++){
         for(int j = 0; j < width; j++){
-            if(i < h || i > height - h || j < w || j > width - w){
+            if(i < h || i > height - 1 - h || j < w || j > width - 1 - w){
                 imageGradients[j + i * width] = 0;
                 imageAngels[j + i * width] = 0;
+                continue;
             }
-            else{
-                applyKernel(buffer, xConv,width, j, i, xSobel, kwidth, w, h, 4/scale);
-                applyKernel(buffer, yConv,width, j, i, ySobel, kwidth, w, h, 4/scale);
-                imageGradients[i * width + j] = std::sqrt(xConv[i * width + j] * xConv[i * width + j] + yConv[i * width + j] * yConv[i * width + j]);
-                imageAngels[j + i * width] = std::atan2(yConv[j + i * width], xConv[j + i * width]); 
-            }
+            applyKernel(buffer, xConv,width, j, i, xSobel, kwidth, w, h, scale * norm);
+            applyKernel(buffer, yConv,width, j, i, ySobel, kwidth, w, h, scale * norm);
+            imageGradients[i * width + j] = clipPixel(std::sqrt(xConv[i * width + j] * xConv[i * width + j] + yConv[i * width + j] * yConv[i * width + j]));
+            imageAngels[j + i * width] = std::atan2(yConv[j + i * width], xConv[j + i * width]); 
         }
     }
 
     stbi_write_png("res/textures/grad_Lenna.png", width, height, 1, imageGradients, width);
 
     //Non-max suppresion
-    for(int i = 1; i < height - 1; i++){
-        for(int j = 1; j < width - 1; j++){
+    for(int i = 0; i < height; i++){
+        for(int j = 0; j < width; j++){
+            if(i < h || i > height - 1 - h || j < w || j > width - 1 - w){
+                imageOutlines[j + i * width] = 0;
+                continue;
+            }
             currAngel = imageAngels[j + i * width] < 0 ? imageAngels[j + i * width] + 360 : imageAngels[j + i * width];
-
+            
             //0 degrees
             if((currAngel > 337.5 ||  currAngel <= 22.5) || (currAngel > 157.5 && currAngel <= 202.5)){
                 vecXSign = 1;
@@ -129,28 +134,18 @@ unsigned char * canny(unsigned char* buffer, int width, int height, float scale)
             
             if(posPixel < currPixel && negPixel < currPixel){
                 imageOutlines[j + (i) * width] = currPixel;
-                //imageOutlines[j+vecXSign + (i+vecYSign) * width] = 0;
-                //imageOutlines[j-vecXSign + (i-vecYSign) * width] = 0;
             }
             else{
                 imageOutlines[j + i * width] = 0;
             }
-            /*else if(currPixel < posPixel && negPixel < posPixel){
-                imageOutlines[j + (i) * width] = 0;
-                imageOutlines[j+vecXSign + (i+vecYSign) * width] = posPixel;
-                imageOutlines[j-vecXSign + (i-vecYSign) * width] = 0;
-            }
-            else if(currPixel < negPixel && posPixel < negPixel){
-                imageOutlines[j + (i) * width] = 0;
-                imageOutlines[j+vecXSign + (i+vecYSign) * width] = 0;
-                imageOutlines[j-vecXSign + (i-vecYSign) * width] = negPixel;
-            }*/
 
             //Double threashholding
             pixelStrength[j + i * width] = doubleThreshhldingPixel(imageOutlines[j + i * width], 0.1 * 255, 0.7 * 255);
         }
     }
     
+    stbi_write_png("res/textures/nonemax_Lenna.png", width, height, 1, imageOutlines, width);
+
     //Hysteresis
     for(int i = 1; i < height - 1; i++){
         for(int j = 1; j < width - 1; j++){
@@ -209,6 +204,7 @@ void applyKernel(unsigned char * buffer, unsigned char * newBuffer, int width, i
             sum += (buffer[j + (i) * width]) * kernel[j+w-x + (i+h-y) * kwidth];
         }
     }
+    newBuffer[x + y * width] = clipPixel(sum * norm);
 }
 
 float clipPixel(float p){
