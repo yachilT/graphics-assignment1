@@ -10,11 +10,8 @@
 #define WEAK 1
 #define STRONG 2
 #define SCALE_FACTOR 4
-<<<<<<< HEAD
 #define CANNY_SCALE 1
-=======
 #define PIXEL_BITRATE 16
->>>>>>> ad975597ab258da34ab724364a3dd971af827d1d
 
 unsigned char * convolution(unsigned char * buffer, unsigned char* newBuffer, int width, int height, float * kernel, int kwidth, int kheight, float norm);
 unsigned char * greyscale(unsigned char * buffer, int length, float gw, float rw, float bw);
