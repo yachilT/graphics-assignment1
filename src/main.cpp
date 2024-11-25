@@ -10,7 +10,11 @@
 #define WEAK 1
 #define STRONG 2
 #define SCALE_FACTOR 4
+<<<<<<< HEAD
 #define CANNY_SCALE 1
+=======
+#define PIXEL_BITRATE 16
+>>>>>>> ad975597ab258da34ab724364a3dd971af827d1d
 
 unsigned char * convolution(unsigned char * buffer, unsigned char* newBuffer, int width, int height, float * kernel, int kwidth, int kheight, float norm);
 unsigned char * greyscale(unsigned char * buffer, int length, float gw, float rw, float bw);
@@ -20,6 +24,8 @@ unsigned char * halftone(unsigned char * buffer, int width, int height);
 float clipPixel(float p);
 int doubleThreshhldingPixel(unsigned char p, int lower, int upper);
 
+unsigned char * fsErrorDiffDithering(unsigned char * buffer, int width, int height, float a, float b, float c, float d);
+unsigned char trunc(unsigned char p);
 int main(void)
 {
     std::string filepath = "res/textures/Lenna.png";
@@ -35,6 +41,9 @@ int main(void)
     result = result + stbi_write_png("res/textures/canny_Lenna.png", width, height, 1, cannyBuffer, width);
     unsigned char * halfBuff = halftone(greyBuffer, width, height);
     result += stbi_write_png("res/textures/Halftone.png", width * 2, height * 2, 1, halfBuff, width * 2);
+
+    unsigned char * fsBuffer = fsErrorDiffDithering(greyBuffer, width, height, 7/16.0, 3/ 16.0, 5/16.0, 1/16.0);
+    result += stbi_write_png("res/textures/FloyedSteinberg.png", width, height, 1, fsBuffer, width);
     std::cout << result << std::endl;
 
     delete [] buffer;
@@ -248,3 +257,29 @@ unsigned char * halftone(unsigned char * buffer, int width, int height) {
     }
     return result;
 }
+
+unsigned char * fsErrorDiffDithering(unsigned char * buffer, int width, int height, float a, float b, float c, float d) {
+    unsigned char * diffused = new unsigned char[width * height];
+    unsigned char * result = new unsigned char[width * height];
+
+    diffused[0] = buffer[0];
+    for (int i = 0; i < height; i++) {
+        for (int j = 0; j < width; j++) {
+            result[i * width + j] = trunc(diffused[i * width + j]);
+            char error = buffer[i * width + j] - result[i * width + j];
+            diffused[i * width + j + 1] = buffer[i * width + j + 1] + error * a;
+            if (i < height - 1) {
+                diffused[(i + 1) * width + j - 1] = buffer[(i + 1) * width + j - 1] + error * b; 
+                diffused[(i + 1) * width + j] = buffer[(i + 1) * width + j] + error * c;
+                diffused[(i + 1) * width + j + 1] = buffer[(i + 1) * width + j + 1] + error * d;
+            }
+        }
+    }
+    std::cout << "HELLO" << std::endl;
+    return result;
+ }
+ 
+unsigned char trunc(unsigned char p) {
+    unsigned char newP = (unsigned char)(p / 255.0 * PIXEL_BITRATE) / 16.0 * 255.0;
+    return newP;
+ }
