@@ -10,7 +10,7 @@
 #define WEAK 1
 #define STRONG 2
 #define SCALE_FACTOR 4
-#define CANNY_SCALE 1
+#define CANNY_SCALE 4
 #define PIXEL_BITRATE 16
 
 unsigned char * convolution(unsigned char * buffer, unsigned char* newBuffer, int width, int height, float * kernel, int kwidth, int kheight, float norm);
@@ -85,7 +85,7 @@ unsigned char * canny(unsigned char* buffer, int width, int height, float scale)
     unsigned char negPixel = 0;
 
     //reducing noise
-    blurredImage = convolution(buffer, blurredImage, width, height, gaussian, kwidth, kheight, 16);
+    blurredImage = convolution(buffer, blurredImage, width, height, gaussian, kwidth, kheight, 1.0/16);
     
     //finding gradient and angels
     for(int i = 0; i < height; i++){
@@ -95,8 +95,8 @@ unsigned char * canny(unsigned char* buffer, int width, int height, float scale)
                 imageAngels[j + i * width] = 0;
                 continue;
             }
-            applyKernel(buffer, x,width, j, i, xSobel, kwidth, kheight, scale);
-            applyKernel(buffer, yConv,width, j, i, ySobel, kwidth, kheight, scale);
+            applyKernel(blurredImage, xConv,width, j, i, xDirv, kwidth, 1, scale);
+            applyKernel(blurredImage, yConv,width, j, i, yDirv, 1, kheight, scale);
             imageGradients[i * width + j] = clipPixel(std::sqrt((int)xConv[i * width + j] * xConv[i * width + j] + (int)yConv[i * width + j] * yConv[i * width + j]));
             imageAngels[j + i * width] = std::atan2(yConv[j + i * width], xConv[j + i * width]); 
         }
@@ -152,8 +152,8 @@ unsigned char * canny(unsigned char* buffer, int width, int height, float scale)
     stbi_write_png("res/textures/nonemax_Lenna.png", width, height, 1, imageOutlines, width);
 
     //Hysteresis
-    for(int i = 1; i < height - 1; i++){
-        for(int j = 1; j < width - 1; j++){
+    for(int i = h; i < height - h; i++){
+        for(int j = w; j < width - w; j++){
             if(pixelStrength[j + i * width] == NON_RELEVANT) imageOutlines[j + i * width] = 0;
             if(pixelStrength[j + i * width] == STRONG) imageOutlines[j + i * width] = 255;
             if(pixelStrength[j + i * width] == WEAK){
