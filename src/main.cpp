@@ -7,8 +7,8 @@
 #define WEAK 1
 #define STRONG 2
 
-unsigned char * convolution(unsigned char * buffer, int width, int height, float * kernel, int kwidth, int kheight, float norm);
-unsigned char * grayscale(unsigned char * buffer, int length, float gw, float rw, float bw);
+unsigned char * convolution(unsigned char * buffer, unsigned char* newBuffer, int width, int height, float * kernel, int kwidth, int kheight, float norm);
+unsigned char * greyscale(unsigned char * buffer, int length, float gw, float rw, float bw);
 void applyKernel(unsigned char * buffer, unsigned char * newBuffer, int width, int x, int y, float * kernel, int kwidth, int w, int h, float norm);
 unsigned char * canny(unsigned char * buffer, int width, int height, float scale);
 unsigned char * halftone(unsigned char * buffer, int width, int height);
@@ -23,18 +23,23 @@ int main(void)
     unsigned char * buffer = stbi_load(filepath.c_str(), &width, &height, &comps, req_comps);
 
 
-    unsigned char *greyBuffer = grayscale(buffer, width * height, 0.2989, 0.5870, 0.1140);
+    unsigned char *greyBuffer = greyscale(buffer, width * height, 0.2989, 0.5870, 0.1140);
     int result = stbi_write_png("res/textures/grey_Lenna.png", width, height, 1, greyBuffer, width);
 
     unsigned char *cannyBuffer = canny(greyBuffer, width, height, 1);
     result = result + stbi_write_png("res/textures/canny_Lenna.png", width, height, 1, cannyBuffer, width);
-    unsigned char * resBuff = halftone(greyBuffer, width, height);
-    result += stbi_write_png("res/textures/Halftone.png", width * 2, height * 2, 1, resBuff, width * 2);
+    unsigned char * halfBuff = halftone(greyBuffer, width, height);
+    result += stbi_write_png("res/textures/Halftone.png", width * 2, height * 2, 1, halfBuff, width * 2);
     std::cout << result << std::endl;
+
+    delete [] buffer;
+    delete [] greyBuffer;
+    delete [] cannyBuffer;
+    delete [] halfBuff;
     return 0;
 }
 
-unsigned char * grayscale(unsigned char * buffer, int length, float rw, float gw, float bw) {
+unsigned char * greyscale(unsigned char * buffer, int length, float rw, float gw, float bw) {
     unsigned char * newBuffer = new unsigned char[length];
     for (int i = 0; i < length; i++) {
         newBuffer[i] = buffer[i * 4] * rw + buffer[i * 4 + 1] *gw + buffer[i * 4 + 2] * bw;
@@ -45,16 +50,18 @@ unsigned char * grayscale(unsigned char * buffer, int length, float rw, float gw
 unsigned char * canny(unsigned char* buffer, int width, int height, float scale){
     float xSobel[] = {1,0,-1, 2,0,-2, 1,0,-1};
     float ySobel[] = {1,2,1, 0,0,0, -1,-2,-1};
+    float gausian[] = {1,2,1 ,2,4,2, 1,2,1};
     int kheight = 3;
     int kwidth = 3;
     int h = (kheight - 1)/2;
     int w = (kwidth - 1)/2;
+    int *pixelStrength = new int[width * height];
+    float* imageAngels = new float[width * height];
+    unsigned char* blurredImage = new unsigned char[width * height];
     unsigned char* xConv = new unsigned char[width * height];
     unsigned char* yConv = new unsigned char[width * height];
     unsigned char* imageGradients = new unsigned char[width * height];
     unsigned char* imageOutlines = new unsigned char[width * height];
-    int *pixelStrength = new int[width * height];
-    float* imageAngels = new float[width * height];
     float currAngel = 0;
     int vecXSign = 0;    
     int vecYSign = 0;
@@ -62,11 +69,14 @@ unsigned char * canny(unsigned char* buffer, int width, int height, float scale)
     unsigned char posPixel = 0;
     unsigned char negPixel = 0;
 
+    //reducing noise
+    blurredImage = convolution(buffer, blurredImage, width, height, gausian, kwidth, kheight, 16);
+
     //finding gradient and angels
     for(int i = h; i < height - h; i++){
         for(int j = w; j < width - w; j++){
-            applyKernel(buffer, xConv,width, j, i, xSobel, kwidth, w, h, 1/scale);
-            applyKernel(buffer, yConv,width, j, i, ySobel, kwidth, w, h, 1/scale);
+            applyKernel(blurredImage, xConv,width, j, i, xSobel, kwidth, w, h, 1/scale);
+            applyKernel(blurredImage, yConv,width, j, i, ySobel, kwidth, w, h, 1/scale);
             imageGradients[i * width + j] = std::sqrt(xConv[i * width + j] * xConv[i * width + j] + yConv[i * width + j] * yConv[i * width + j]);
             imageAngels[j + i * width] = std::atan2(xConv[j + i * width], yConv[j + i * width]);
         }
@@ -101,13 +111,16 @@ unsigned char * canny(unsigned char* buffer, int width, int height, float scale)
             currPixel = imageGradients[j + i * width];
             posPixel = imageGradients[j+vecXSign + (i+vecYSign) * width];
             negPixel = imageGradients[j-vecXSign + (i-vecYSign) * width];
-
+            
             if(posPixel < currPixel && negPixel < currPixel){
                 imageOutlines[j + (i) * width] = currPixel;
-                imageOutlines[j+vecXSign + (i+vecYSign) * width] = 0;
-                imageOutlines[j-vecXSign + (i-vecYSign) * width] = 0;
+                //imageOutlines[j+vecXSign + (i+vecYSign) * width] = 0;
+                //imageOutlines[j-vecXSign + (i-vecYSign) * width] = 0;
             }
-            else if(currPixel < posPixel && negPixel < posPixel){
+            else{
+                imageOutlines[j + i * width] = 0;
+            }
+            /*else if(currPixel < posPixel && negPixel < posPixel){
                 imageOutlines[j + (i) * width] = 0;
                 imageOutlines[j+vecXSign + (i+vecYSign) * width] = posPixel;
                 imageOutlines[j-vecXSign + (i-vecYSign) * width] = 0;
@@ -116,7 +129,7 @@ unsigned char * canny(unsigned char* buffer, int width, int height, float scale)
                 imageOutlines[j + (i) * width] = 0;
                 imageOutlines[j+vecXSign + (i+vecYSign) * width] = 0;
                 imageOutlines[j-vecXSign + (i-vecYSign) * width] = negPixel;
-            }
+            }*/
 
             //Double threashholding
             pixelStrength[j + i * width] = doubleThreshhldingPixel(imageOutlines[j + i * width], 0.1 * 255, 0.7 * 255);
@@ -142,6 +155,12 @@ unsigned char * canny(unsigned char* buffer, int width, int height, float scale)
         }
     }
 
+    delete [] xConv;
+    delete [] yConv;
+    delete [] imageGradients;
+    delete [] pixelStrength;
+    delete [] imageAngels;
+    delete [] blurredImage;
     return imageOutlines;
 }
 
@@ -153,8 +172,7 @@ int doubleThreshhldingPixel(unsigned char p, int lower, int upper){
 }
  
 //working but only give convolution
-unsigned char * convolution(unsigned char * buffer, int width, int height, float * kernel, int kwidth, int kheight, float norm){
-    unsigned char * newBuffer = new unsigned char[width*height];
+unsigned char * convolution(unsigned char * buffer, unsigned char* newBuffer, int width, int height, float * kernel, int kwidth, int kheight, float norm){
     int h = (kheight - 1)/2;
     int w = (kwidth - 1)/2;
     for(int i = h; i < height - h; i++){
