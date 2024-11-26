@@ -30,12 +30,12 @@
 
 
 
-unsigned char * convolution(unsigned char * buffer, unsigned char* newBuffer, int width, int height, float * kernel, int kwidth, int kheight, float norm);
 unsigned char * greyscale(unsigned char * buffer, int length, float gw, float rw, float bw);
-void applyKernel(unsigned char * buffer, unsigned char * newBuffer, int width, int x, int y, float * kernel, int kwidth, int kheight, float norm);
 unsigned char * canny(unsigned char * buffer, int width, int height, float scale, float lower, float upper);
-unsigned char * halftone(unsigned char * buffer, int width, int height);
+float* convolution(float* buffer, float* newBuffer, int width, int height, float * kernel, int kwidth, int kheight, float norm);
+void applyKernel(float* buffer, float* newBuffer, int width, int x, int y, float * kernel, int kwidth, int kheight, float norm);
 float clipPixel(float p);
+unsigned char * halftone(unsigned char * buffer, int width, int height);
 int doubleThreshhldingPixel(unsigned char p, int lower, int upper);
 
 unsigned char * fsErrorDiffDithering(unsigned char * buffer, int width, int height, float a, float b, float c, float d);
@@ -51,7 +51,7 @@ int main(void)
     unsigned char *greyBuffer = greyscale(buffer, width * height, RED_WEIGHT, GREEN_WEIGHT, BLUE_WEIGHT);
     int result = stbi_write_png("res/textures/Grayscale.png", width, height, 1, greyBuffer, width);
 
-    unsigned char *cannyBuffer = canny(greyBuffer, width, height, CANNY_SCALE, 0.05, 0.2);
+    unsigned char *cannyBuffer = canny(greyBuffer, width, height, CANNY_SCALE, 0.1, 0.3);
     result = result + stbi_write_png("res/textures/Canny.png", width, height, 1, cannyBuffer, width);
     unsigned char * halfBuff = halftone(greyBuffer, width, height);
     result += stbi_write_png("res/textures/Halftone.png", width * 2, height * 2, 1, halfBuff, width * 2);
@@ -86,9 +86,9 @@ unsigned char * canny(unsigned char* buffer, int width, int height, float scale,
     int w = (kwidth - 1)/2;
     int *pixelStrength = new int[width * height];
     float* imageAngels = new float[width * height];
-    unsigned char* blurredImage = new unsigned char[width * height];
-    unsigned char* xConv = new unsigned char[width * height];
-    unsigned char* yConv = new unsigned char[width * height];
+    float* blurredImage = new float[width * height];
+    float* xConv = new float[width * height];
+    float* yConv = new float[width * height];
     unsigned char* imageGradients = new unsigned char[width * height];
     unsigned char* imageOutlines = new unsigned char[width * height];
     float currAngel = 0;
@@ -97,9 +97,15 @@ unsigned char * canny(unsigned char* buffer, int width, int height, float scale,
     unsigned char currPixel = 0;
     unsigned char posPixel = 0;
     unsigned char negPixel = 0;
-
+    
+    float* fBuffer = new float[width * height];
+    for(int i = 0; i < height;i++){
+        for(int j = 0; j < width; j++){
+            fBuffer[j + i * width] = buffer[j + i * width];
+        }
+    }
     //reducing noise
-    convolution(buffer, blurredImage, width, height, gaussian, kwidth, kheight, 1.0/16);
+    convolution(fBuffer, blurredImage, width, height, gaussian, kwidth, kheight, 1.0/16);
 
     //finding gradient and angels
     for(int i = 0; i < height; i++){
@@ -111,7 +117,7 @@ unsigned char * canny(unsigned char* buffer, int width, int height, float scale,
             }
             applyKernel(blurredImage, xConv,width, j, i, xSobel, kwidth, kheight, scale);
             applyKernel(blurredImage, yConv,width, j, i, ySobel, kwidth, kheight, scale);
-            imageGradients[i * width + j] = clipPixel(std::sqrt((int)xConv[i * width + j] * xConv[i * width + j] + (int)yConv[i * width + j] * yConv[i * width + j]));
+            imageGradients[i * width + j] = clipPixel(std::sqrt(xConv[i * width + j] * xConv[i * width + j] + yConv[i * width + j] * yConv[i * width + j]));
             imageAngels[j + i * width] = std::atan2(yConv[j + i * width], xConv[j + i * width]) * (180/M_PI); 
         }
     }
@@ -201,7 +207,7 @@ int doubleThreshhldingPixel(unsigned char p, int lower, int upper){
 }
  
 //working but only give convolution
-unsigned char * convolution(unsigned char * buffer, unsigned char* newBuffer, int width, int height, float * kernel, int kwidth, int kheight, float norm){
+float* convolution(float* buffer, float* newBuffer, int width, int height, float * kernel, int kwidth, int kheight, float norm){
     for(int i = 0; i < kheight; i++){
         for(int j = 0; j < width; j++){
             newBuffer[j + i * width] = BLACK;
@@ -223,14 +229,14 @@ unsigned char * convolution(unsigned char * buffer, unsigned char* newBuffer, in
     return newBuffer;
 }
 
-void applyKernel(unsigned char * buffer, unsigned char * newBuffer, int width, int x, int y, float * kernel, int kwidth, int kheight, float norm){
+void applyKernel(float* buffer, float* newBuffer, int width, int x, int y, float * kernel, int kwidth, int kheight, float norm){
     float sum = 0;
     for(int i = 0; i < kheight; i++){
         for(int j = 0; j < kwidth; j++){
             sum += buffer[x-(kwidth-1)/2+j + (y-(kheight-1)/2+i) * width] * kernel[j + (i) * kwidth];
         }
     }
-    newBuffer[x + y * width] = clipPixel(std::abs(sum) * norm);
+    newBuffer[x + y * width] = sum * norm;
 }
 
 float clipPixel(float p){
