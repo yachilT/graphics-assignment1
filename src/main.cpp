@@ -4,15 +4,27 @@
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include <stb/stb_image_write.h>
 #include <cmath>
-
 #include <iostream>
+
+// gray scale weights
+#define RED_WEIGHT 0.2989
+#define GREEN_WEIGHT 0.5870
+#define BLUE_WEIGHT 0.1140
+
 #define NON_RELEVANT 0
 #define WEAK 1
 #define STRONG 2
-#define SCALE_FACTOR 4
 #define CANNY_SCALE 0.25
-#define PIXEL_BITRATE 16
-# define M_PI 3.14159265358979323846
+#define M_PI 3.14159265358979323846
+
+// Floyed-Steinberg dithering
+#define COMPRESSED_GS 16 // compressed grayscale
+#define ALPHA 7/16.0
+#define BETA 3/16.0
+#define GAMMA 5/16.0
+#define DELTA 1/16.0
+
+
 
 unsigned char * convolution(unsigned char * buffer, unsigned char* newBuffer, int width, int height, float * kernel, int kwidth, int kheight, float norm);
 unsigned char * greyscale(unsigned char * buffer, int length, float gw, float rw, float bw);
@@ -32,7 +44,7 @@ int main(void)
     unsigned char * buffer = stbi_load(filepath.c_str(), &width, &height, &comps, req_comps);
 
 
-    unsigned char *greyBuffer = greyscale(buffer, width * height, 0.2989, 0.5870, 0.1140);
+    unsigned char *greyBuffer = greyscale(buffer, width * height, RED_WEIGHT, GREEN_WEIGHT, BLUE_WEIGHT);
     int result = stbi_write_png("res/textures/grey_Lenna.png", width, height, 1, greyBuffer, width);
 
     unsigned char *cannyBuffer = canny(greyBuffer, width, height, CANNY_SCALE);
@@ -40,7 +52,7 @@ int main(void)
     unsigned char * halfBuff = halftone(greyBuffer, width, height);
     result += stbi_write_png("res/textures/Halftone.png", width * 2, height * 2, 1, halfBuff, width * 2);
 
-    unsigned char * fsBuffer = fsErrorDiffDithering(greyBuffer, width, height, 7/16.0, 3/ 16.0, 5/16.0, 1/16.0);
+    unsigned char * fsBuffer = fsErrorDiffDithering(greyBuffer, width, height, ALPHA, BETA, GAMMA, DELTA);
     result += stbi_write_png("res/textures/FloyedSteinberg.png", width, height, 1, fsBuffer, width);
     std::cout << result << std::endl;
 
@@ -268,7 +280,7 @@ unsigned char * halftone(unsigned char * buffer, int width, int height) {
 }
 
 unsigned char * fsErrorDiffDithering(unsigned char * buffer, int width, int height, float a, float b, float c, float d) {
-    unsigned char * diffused = new unsigned char[width * height];
+    unsigned char * diffused = new unsigned char[width * height]; // copy of image with diffused error
     unsigned char * result = new unsigned char[width * height];
 
     diffused[0] = buffer[0];
@@ -288,6 +300,6 @@ unsigned char * fsErrorDiffDithering(unsigned char * buffer, int width, int heig
  }
  
 unsigned char trunc(unsigned char p) {
-    unsigned char newP = (unsigned char)(p / 255.0 * PIXEL_BITRATE) / 16.0 * 255.0;
-    return newP;
+    // maps 0-255 into one of COMPRESSED_GS values spaced
+    return (unsigned char)(p / 255.0 * COMPRESSED_GS) / (float)COMPRESSED_GS * 255.0;
  }
