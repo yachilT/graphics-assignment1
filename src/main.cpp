@@ -12,6 +12,7 @@
 #define SCALE_FACTOR 4
 #define CANNY_SCALE 1
 #define PIXEL_BITRATE 16
+# define M_PI 3.14159265358979323846
 
 unsigned char * convolution(unsigned char * buffer, unsigned char* newBuffer, int width, int height, float * kernel, int kwidth, int kheight, float norm);
 unsigned char * greyscale(unsigned char * buffer, int length, float gw, float rw, float bw);
@@ -98,7 +99,7 @@ unsigned char * canny(unsigned char* buffer, int width, int height, float scale)
             applyKernel(blurredImage, xConv,width, j, i, xSobel, kwidth, kheight, scale);
             applyKernel(blurredImage, yConv,width, j, i, ySobel, kwidth, kheight, scale);
             imageGradients[i * width + j] = clipPixel(std::sqrt((int)xConv[i * width + j] * xConv[i * width + j] + (int)yConv[i * width + j] * yConv[i * width + j]));
-            imageAngels[j + i * width] = std::atan2(yConv[j + i * width], xConv[j + i * width]); 
+            imageAngels[j + i * width] = std::atan2(yConv[j + i * width], xConv[j + i * width]) * (180/M_PI); 
         }
     }
     stbi_write_png("res/textures/grad_Lenna.png", width, height, 1, imageGradients, width);
@@ -145,7 +146,7 @@ unsigned char * canny(unsigned char* buffer, int width, int height, float scale)
             }
 
             //Double threashholding
-            pixelStrength[j + i * width] = doubleThreshhldingPixel(imageOutlines[j + i * width], 0.05 * 255, 0.5 * 255);
+            pixelStrength[j + i * width] = doubleThreshhldingPixel(imageOutlines[j + i * width], 0.05 * 255, 0.7 * 255);
         }
     }
     
@@ -210,8 +211,8 @@ void applyKernel(unsigned char * buffer, unsigned char * newBuffer, int width, i
 }
 
 float clipPixel(float p){
-    if(p > 255) p = 255;
-    if(p < 0) p = 0;
+    if(p > 255) return 255;
+    if(p < 0) return 0;
     return p;
 }
 
