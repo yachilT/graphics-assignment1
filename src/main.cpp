@@ -1,3 +1,5 @@
+//if you wish to run with makefile extantion, try removinf the 2 defines below.
+
 #define STB_IMAGE_IMPLEMENTATION
 #include <stb/stb_image.h>
 
@@ -16,7 +18,7 @@
 #define NON_RELEVANT 0
 #define WEAK 1
 #define STRONG 2
-#define CANNY_SCALE 0.25
+#define CANNY_SCALE 0.3
 #define M_PI 3.14159265358979323846
 
 // Floyed-Steinberg dithering
@@ -47,10 +49,10 @@ int main(void)
 
 
     unsigned char *greyBuffer = greyscale(buffer, width * height, RED_WEIGHT, GREEN_WEIGHT, BLUE_WEIGHT);
-    int result = stbi_write_png("res/textures/grey_Lenna.png", width, height, 1, greyBuffer, width);
+    int result = stbi_write_png("res/textures/Grayscale.png", width, height, 1, greyBuffer, width);
 
     unsigned char *cannyBuffer = canny(greyBuffer, width, height, CANNY_SCALE, 0.05, 0.2);
-    result = result + stbi_write_png("res/textures/canny_Lenna.png", width, height, 1, cannyBuffer, width);
+    result = result + stbi_write_png("res/textures/Canny.png", width, height, 1, cannyBuffer, width);
     unsigned char * halfBuff = halftone(greyBuffer, width, height);
     result += stbi_write_png("res/textures/Halftone.png", width * 2, height * 2, 1, halfBuff, width * 2);
 
