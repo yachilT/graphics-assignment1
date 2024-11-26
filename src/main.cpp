@@ -10,7 +10,7 @@
 #define WEAK 1
 #define STRONG 2
 #define SCALE_FACTOR 4
-#define CANNY_SCALE 1
+#define CANNY_SCALE 0.25
 #define PIXEL_BITRATE 16
 # define M_PI 3.14159265358979323846
 
@@ -148,7 +148,7 @@ unsigned char * canny(unsigned char* buffer, int width, int height, float scale)
             }
 
             //Double threashholding
-            pixelStrength[j + i * width] = doubleThreshhldingPixel(imageOutlines[j + i * width], 0.05 * 255, 0.7 * 255);
+            pixelStrength[j + i * width] = doubleThreshhldingPixel(imageOutlines[j + i * width], 0.05 * 255, 0.15 * 255);
         }
     }
     
