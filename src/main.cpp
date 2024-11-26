@@ -98,7 +98,7 @@ unsigned char * canny(unsigned char* buffer, int width, int height, float scale)
             applyKernel(blurredImage, xConv,width, j, i, xSobel, kwidth, kheight, scale);
             applyKernel(blurredImage, yConv,width, j, i, ySobel, kwidth, kheight, scale);
             imageGradients[i * width + j] = clipPixel(std::sqrt((int)xConv[i * width + j] * xConv[i * width + j] + (int)yConv[i * width + j] * yConv[i * width + j]));
-            imageAngels[j + i * width] = std::atan2(yConv[j + i * width], xConv[j + i * width]); 
+            imageAngels[j + i * width] = std::atan2(yConv[j + i * width], xConv[j + i * width]) / 3.14159265358979323846 * 180; 
         }
     }
     stbi_write_png("res/textures/grad_Lenna.png", width, height, 1, imageGradients, width);
