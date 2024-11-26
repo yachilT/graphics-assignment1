@@ -18,7 +18,7 @@
 #define NON_RELEVANT 0
 #define WEAK 1
 #define STRONG 2
-#define CANNY_SCALE 0.3
+#define CANNY_SCALE 0.25
 #define M_PI 3.14159265358979323846
 
 // Floyed-Steinberg dithering
@@ -51,7 +51,7 @@ int main(void)
     unsigned char *greyBuffer = greyscale(buffer, width * height, RED_WEIGHT, GREEN_WEIGHT, BLUE_WEIGHT);
     int result = stbi_write_png("res/textures/Grayscale.png", width, height, 1, greyBuffer, width);
 
-    unsigned char *cannyBuffer = canny(greyBuffer, width, height, CANNY_SCALE, 0.1, 0.3);
+    unsigned char *cannyBuffer = canny(greyBuffer, width, height, CANNY_SCALE, 0.1, 0.15);
     result = result + stbi_write_png("res/textures/Canny.png", width, height, 1, cannyBuffer, width);
     unsigned char * halfBuff = halftone(greyBuffer, width, height);
     result += stbi_write_png("res/textures/Halftone.png", width * 2, height * 2, 1, halfBuff, width * 2);
@@ -74,6 +74,8 @@ unsigned char * greyscale(unsigned char * buffer, int length, float rw, float gw
     }
     return newBuffer;
 }
+
+
 
 unsigned char * canny(unsigned char* buffer, int width, int height, float scale, float lower, float upper){
     float xSobel[] = {1,0,-1, 2,0,-2, 1,0,-1};
@@ -121,6 +123,7 @@ unsigned char * canny(unsigned char* buffer, int width, int height, float scale,
             imageAngels[j + i * width] = std::atan2(yConv[j + i * width], xConv[j + i * width]) * (180/M_PI); 
         }
     }
+    stbi_write_png("res/textures/grad.png", width, height, 1, imageGradients, width);
 
     //Non-max suppresion
     for(int i = 0; i < height; i++){
@@ -137,18 +140,18 @@ unsigned char * canny(unsigned char* buffer, int width, int height, float scale,
                 vecYSign = 0;
             }
             //45 degrees
-            else if((currAngel > 22.5 ||  currAngel <= 67.5) || (currAngel > 202.5 && currAngel <= 247.5)){
+            else if((currAngel > 22.5 && currAngel <= 67.5) || (currAngel > 202.5 && currAngel <= 247.5)){
                 vecXSign = 1;
-                vecYSign = -1;
+                vecYSign = 1;
             }
             //90 degrees
-            else if((currAngel > 67.5 ||  currAngel <= 112.5) || (currAngel > 247.5 && currAngel <= 292.5)){
+            else if((currAngel > 67.5 && currAngel <= 112.5) || (currAngel > 247.5 && currAngel <= 292.5)){
                 vecXSign = 0;
                 vecYSign = 1;
             }
             //135 degrees
-            else if((currAngel > 112.5 ||  currAngel <= 157.5) || (currAngel > 292.5 && currAngel <= 337.5)){
-                vecXSign = 1;
+            else if((currAngel > 112.5 && currAngel <= 157.5) || (currAngel > 292.5 && currAngel <= 337.5)){
+                vecXSign = -1;
                 vecYSign = 1;
             }
 
@@ -167,6 +170,8 @@ unsigned char * canny(unsigned char* buffer, int width, int height, float scale,
             pixelStrength[j + i * width] = doubleThreshhldingPixel(imageOutlines[j + i * width], lower * WHITE, upper * WHITE);
         }
     }
+
+    stbi_write_png("res/textures/nonmax.png", width, height, 1, imageOutlines, width);
     
     //Hysteresis
     for(int i = h; i < height - h; i++){
