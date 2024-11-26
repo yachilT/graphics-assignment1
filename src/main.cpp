@@ -19,7 +19,7 @@
 unsigned char * convolution(unsigned char * buffer, unsigned char* newBuffer, int width, int height, float * kernel, int kwidth, int kheight, float norm);
 unsigned char * greyscale(unsigned char * buffer, int length, float gw, float rw, float bw);
 void applyKernel(unsigned char * buffer, unsigned char * newBuffer, int width, int x, int y, float * kernel, int kwidth, int kheight, float norm);
-unsigned char * canny(unsigned char * buffer, int width, int height, float scale);
+unsigned char * canny(unsigned char * buffer, int width, int height, float scale, float lower, float upper);
 unsigned char * halftone(unsigned char * buffer, int width, int height);
 float clipPixel(float p);
 int doubleThreshhldingPixel(unsigned char p, int lower, int upper);
@@ -37,7 +37,7 @@ int main(void)
     unsigned char *greyBuffer = greyscale(buffer, width * height, 0.2989, 0.5870, 0.1140);
     int result = stbi_write_png("res/textures/grey_Lenna.png", width, height, 1, greyBuffer, width);
 
-    unsigned char *cannyBuffer = canny(greyBuffer, width, height, CANNY_SCALE);
+    unsigned char *cannyBuffer = canny(greyBuffer, width, height, CANNY_SCALE, 0.05, 0.2);
     result = result + stbi_write_png("res/textures/canny_Lenna.png", width, height, 1, cannyBuffer, width);
     unsigned char * halfBuff = halftone(greyBuffer, width, height);
     result += stbi_write_png("res/textures/Halftone.png", width * 2, height * 2, 1, halfBuff, width * 2);
@@ -61,7 +61,7 @@ unsigned char * greyscale(unsigned char * buffer, int length, float rw, float gw
     return newBuffer;
 }
 
-unsigned char * canny(unsigned char* buffer, int width, int height, float scale){
+unsigned char * canny(unsigned char* buffer, int width, int height, float scale, float lower, float upper){
     float xSobel[] = {1,0,-1, 2,0,-2, 1,0,-1};
     float ySobel[] = {1,2,1, 0,0,0, -1,-2,-1};
     float gaussian[] = {1,2,1 ,2,4,2, 1,2,1};
@@ -144,7 +144,7 @@ unsigned char * canny(unsigned char* buffer, int width, int height, float scale)
             }
 
             //Double threashholding
-            pixelStrength[j + i * width] = doubleThreshhldingPixel(imageOutlines[j + i * width], 0.05 * WHITE, 0.7 * WHITE);
+            pixelStrength[j + i * width] = doubleThreshhldingPixel(imageOutlines[j + i * width], lower * WHITE, upper * WHITE);
         }
     }
     
