@@ -6,6 +6,8 @@
 #include <cmath>
 
 #include <iostream>
+#define WHITE 255
+#define BLACK 0
 #define NON_RELEVANT 0
 #define WEAK 1
 #define STRONG 2
@@ -63,14 +65,11 @@ unsigned char * canny(unsigned char* buffer, int width, int height, float scale)
     float xSobel[] = {1,0,-1, 2,0,-2, 1,0,-1};
     float ySobel[] = {1,2,1, 0,0,0, -1,-2,-1};
     float gaussian[] = {1,2,1 ,2,4,2, 1,2,1};
-    float xDirv[] = {0,-1,1};
-    float yDirv[] = {0,-1,1};
 
     int kheight = 3;
     int kwidth = 3;
     int h = (kheight - 1)/2;
     int w = (kwidth - 1)/2;
-    float norm = 1.0;
     int *pixelStrength = new int[width * height];
     float* imageAngels = new float[width * height];
     unsigned char* blurredImage = new unsigned char[width * height];
@@ -92,8 +91,8 @@ unsigned char * canny(unsigned char* buffer, int width, int height, float scale)
     for(int i = 0; i < height; i++){
         for(int j = 0; j < width; j++){
             if(i < h || i > height - 1 - h || j < w || j > width - 1 - w){
-                imageGradients[j + i * width] = 0;
-                imageAngels[j + i * width] = 0;
+                imageGradients[j + i * width] = BLACK;
+                imageAngels[j + i * width] = BLACK;
                 continue;
             }
             applyKernel(blurredImage, xConv,width, j, i, xSobel, kwidth, kheight, scale);
@@ -102,15 +101,12 @@ unsigned char * canny(unsigned char* buffer, int width, int height, float scale)
             imageAngels[j + i * width] = std::atan2(yConv[j + i * width], xConv[j + i * width]) * (180/M_PI); 
         }
     }
-    stbi_write_png("res/textures/grad_Lenna.png", width, height, 1, imageGradients, width);
-    stbi_write_png("res/textures/xgrad_Lenna.png", width, height, 1, xConv, width);
-    stbi_write_png("res/textures/ygrad_Lenna.png", width, height, 1, yConv, width);
 
     //Non-max suppresion
     for(int i = 0; i < height; i++){
         for(int j = 0; j < width; j++){
             if(i < h || i > height - 1 - h || j < w || j > width - 1 - w){
-                imageOutlines[j + i * width] = 0;
+                imageOutlines[j + i * width] = BLACK;
                 continue;
             }
             currAngel = imageAngels[j + i * width] < 0 ? imageAngels[j + i * width] + 360 : imageAngels[j + i * width];
@@ -144,21 +140,19 @@ unsigned char * canny(unsigned char* buffer, int width, int height, float scale)
                 imageOutlines[j + (i) * width] = currPixel;
             }
             else{
-                imageOutlines[j + i * width] = 0;
+                imageOutlines[j + i * width] = BLACK;
             }
 
             //Double threashholding
-            pixelStrength[j + i * width] = doubleThreshhldingPixel(imageOutlines[j + i * width], 0.05 * 255, 0.7 * 255);
+            pixelStrength[j + i * width] = doubleThreshhldingPixel(imageOutlines[j + i * width], 0.05 * WHITE, 0.7 * WHITE);
         }
     }
     
-    stbi_write_png("res/textures/nonemax_Lenna.png", width, height, 1, imageOutlines, width);
-
     //Hysteresis
     for(int i = h; i < height - h; i++){
         for(int j = w; j < width - w; j++){
-            if(pixelStrength[j + i * width] == NON_RELEVANT) imageOutlines[j + i * width] = 0;
-            if(pixelStrength[j + i * width] == STRONG) imageOutlines[j + i * width] = 255;
+            if(pixelStrength[j + i * width] == NON_RELEVANT) imageOutlines[j + i * width] = BLACK;
+            if(pixelStrength[j + i * width] == STRONG) imageOutlines[j + i * width] = WHITE;
             if(pixelStrength[j + i * width] == WEAK){
                 if(pixelStrength[j-1 + (i-1)*width] == STRONG ||
                     pixelStrength[j + (i-1)*width] == STRONG ||
@@ -168,10 +162,10 @@ unsigned char * canny(unsigned char* buffer, int width, int height, float scale)
                     pixelStrength[j-1 + (i+1)*width] == STRONG ||
                     pixelStrength[j + (i+1)*width] == STRONG ||
                     pixelStrength[j+1 + (i+1)*width] == STRONG) {  
-                        imageOutlines[j + i * width] = 255;
+                        imageOutlines[j + i * width] = WHITE;
                         pixelStrength[j + i * width] = STRONG;
                     }
-                else imageOutlines[j + i * width] = 0;
+                else imageOutlines[j + i * width] = BLACK;
             }
         }
     }
@@ -196,14 +190,14 @@ int doubleThreshhldingPixel(unsigned char p, int lower, int upper){
 unsigned char * convolution(unsigned char * buffer, unsigned char* newBuffer, int width, int height, float * kernel, int kwidth, int kheight, float norm){
     for(int i = 0; i < kheight; i++){
         for(int j = 0; j < width; j++){
-            newBuffer[j + i * width] = 0;
-            newBuffer[j + (height-1 - i) * width] = 0;
+            newBuffer[j + i * width] = BLACK;
+            newBuffer[j + (height-1 - i) * width] = BLACK;
         }
     }
     for(int i = kheight; i < height; i++){
         for(int j = 0; j < kwidth; j++){
-            newBuffer[j + i * width] = 0;
-            newBuffer[width-1-j + i * width] = 0;
+            newBuffer[j + i * width] = BLACK;
+            newBuffer[width-1-j + i * width] = BLACK;
         }
     }
 
@@ -226,8 +220,8 @@ void applyKernel(unsigned char * buffer, unsigned char * newBuffer, int width, i
 }
 
 float clipPixel(float p){
-    if(p > 255) return 255;
-    if(p < 0) return 0;
+    if(p > WHITE) return WHITE;
+    if(p < BLACK) return BLACK;
     return p;
 }
 
@@ -237,31 +231,31 @@ unsigned char * halftone(unsigned char * buffer, int width, int height) {
     for (int i = 0; i < length; i++) {
         int row = i / width;
         int col = i % width;
-        if (buffer[i] < 255.0 / 5) {
-            result[row * 2 * 2 * width + col * 2] = 0;
-            result[row * 2 * 2 * width + col * 2 + 1] = 0;
-            result[(row * 2 + 1) * 2 * width + col * 2] = 0;
-            result[(row * 2 + 1) * 2 * width + col * 2 + 1] = 0;
-        } else if (buffer[i] >= 255.0 / 5 && buffer[i] < 255.0 / 5 * 2 ) {
-            result[row * 2 * 2 * width + col * 2] = 0; 
-            result[row * 2 * 2 * width + col * 2 + 1] = 0;
-            result[(row * 2 + 1) * 2 * width + col * 2] = 255;
-            result[(row * 2 + 1) * 2 * width + col * 2 + 1] = 0;
-        } else if (buffer[i] >= 255.0 / 5 * 2 && buffer[i] < 255.0 / 5 * 3) {
-            result[row * 2 * 2 * width + col * 2] = 255;
-            result[row * 2 * 2 * width + col * 2 + 1] = 0;
-            result[(row * 2 + 1) * 2 * width + col * 2] = 255;
-            result[(row * 2 + 1) * 2 * width + col * 2 + 1] = 0;
-        } else if (buffer[i] >= 255.0 / 5 * 3 && buffer[i] < 255.0 / 5 * 4) {
-            result[row * 2 * 2 * width + col * 2] = 0;
-            result[row * 2 * 2 * width + col * 2 + 1] = 255;
-            result[(row * 2 + 1) * 2 * width + col * 2] = 255;
-            result[(row * 2 + 1) * 2 * width + col * 2 + 1] = 255;
-        } else if (buffer[i] >= 255.0 / 5 * 4) {
-            result[row * 2 * 2 * width + col * 2] = 255;
-            result[row * 2 * 2 * width + col * 2 + 1] = 255;
-            result[(row * 2 + 1) * 2 * width + col * 2] = 255;
-            result[(row * 2 + 1) * 2 * width + col * 2 + 1] = 255;
+        if (buffer[i] < WHITE / 5) {
+            result[row * 2 * 2 * width + col * 2] = BLACK;
+            result[row * 2 * 2 * width + col * 2 + 1] = BLACK;
+            result[(row * 2 + 1) * 2 * width + col * 2] = BLACK;
+            result[(row * 2 + 1) * 2 * width + col * 2 + 1] = BLACK;
+        } else if (buffer[i] >= WHITE / 5 && buffer[i] < WHITE / 5 * 2 ) {
+            result[row * 2 * 2 * width + col * 2] = BLACK; 
+            result[row * 2 * 2 * width + col * 2 + 1] = BLACK;
+            result[(row * 2 + 1) * 2 * width + col * 2] = WHITE;
+            result[(row * 2 + 1) * 2 * width + col * 2 + 1] = BLACK;
+        } else if (buffer[i] >= WHITE / 5 * 2 && buffer[i] < WHITE / 5 * 3) {
+            result[row * 2 * 2 * width + col * 2] = WHITE;
+            result[row * 2 * 2 * width + col * 2 + 1] = BLACK;
+            result[(row * 2 + 1) * 2 * width + col * 2] = WHITE;
+            result[(row * 2 + 1) * 2 * width + col * 2 + 1] = BLACK;
+        } else if (buffer[i] >= WHITE / 5 * 3 && buffer[i] < WHITE / 5 * 4) {
+            result[row * 2 * 2 * width + col * 2] = BLACK;
+            result[row * 2 * 2 * width + col * 2 + 1] = WHITE;
+            result[(row * 2 + 1) * 2 * width + col * 2] = WHITE;
+            result[(row * 2 + 1) * 2 * width + col * 2 + 1] = WHITE;
+        } else if (buffer[i] >= WHITE / 5 * 4) {
+            result[row * 2 * 2 * width + col * 2] = WHITE;
+            result[row * 2 * 2 * width + col * 2 + 1] = WHITE;
+            result[(row * 2 + 1) * 2 * width + col * 2] = WHITE;
+            result[(row * 2 + 1) * 2 * width + col * 2 + 1] = WHITE;
         }
     }
     return result;
@@ -288,6 +282,6 @@ unsigned char * fsErrorDiffDithering(unsigned char * buffer, int width, int heig
  }
  
 unsigned char trunc(unsigned char p) {
-    unsigned char newP = (unsigned char)(p / 255.0 * PIXEL_BITRATE) / 16.0 * 255.0;
+    unsigned char newP = (unsigned char)(p / WHITE * PIXEL_BITRATE) / 16.0 * WHITE;
     return newP;
  }
