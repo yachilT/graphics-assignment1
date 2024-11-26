@@ -103,6 +103,8 @@ unsigned char * canny(unsigned char* buffer, int width, int height, float scale)
         }
     }
     stbi_write_png("res/textures/grad_Lenna.png", width, height, 1, imageGradients, width);
+    stbi_write_png("res/textures/xgrad_Lenna.png", width, height, 1, xConv, width);
+    stbi_write_png("res/textures/ygrad_Lenna.png", width, height, 1, yConv, width);
 
     //Non-max suppresion
     for(int i = 0; i < height; i++){
@@ -192,6 +194,19 @@ int doubleThreshhldingPixel(unsigned char p, int lower, int upper){
  
 //working but only give convolution
 unsigned char * convolution(unsigned char * buffer, unsigned char* newBuffer, int width, int height, float * kernel, int kwidth, int kheight, float norm){
+    for(int i = 0; i < kheight; i++){
+        for(int j = 0; j < width; j++){
+            newBuffer[j + i * width] = 0;
+            newBuffer[j + (height-1 - i) * width] = 0;
+        }
+    }
+    for(int i = kheight; i < height; i++){
+        for(int j = 0; j < kwidth; j++){
+            newBuffer[j + i * width] = 0;
+            newBuffer[width-1-j + i * width] = 0;
+        }
+    }
+
     for(int i = (kheight-1)/2; i < height - (kheight-1)/2; i++){
         for(int j = (kwidth-1)/2; j < width - (kheight-1)/2; j++){
             applyKernel(buffer, newBuffer,width, j, i, kernel, kwidth, kheight, norm);
@@ -207,7 +222,7 @@ void applyKernel(unsigned char * buffer, unsigned char * newBuffer, int width, i
             sum += buffer[x-(kwidth-1)/2+j + (y-(kheight-1)/2+i) * width] * kernel[j + (i) * kwidth];
         }
     }
-    newBuffer[x + y * width] = clipPixel(sum * norm);
+    newBuffer[x + y * width] = clipPixel(std::abs(sum) * norm);
 }
 
 float clipPixel(float p){
