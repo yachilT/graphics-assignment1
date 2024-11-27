@@ -29,7 +29,6 @@
 #define DELTA 1/16.0
 
 
-void convertFloatToChar(float * fBuffer, unsigned char * cBuffer, int length);
 unsigned char * greyscale(unsigned char * buffer, int length, float gw, float rw, float bw);
 unsigned char * canny(unsigned char * buffer, int width, int height, float scale, float lower, float upper);
 float* convolution(float* buffer, float* newBuffer, int width, int height, float * kernel, int kwidth, int kheight, float norm);
@@ -75,11 +74,6 @@ unsigned char * greyscale(unsigned char * buffer, int length, float rw, float gw
     return newBuffer;
 }
 
-void convertFloatToChar(float * fBuffer, unsigned char * cBuffer, int length) {
-    for (int i = 0; i < length; i++) {
-        cBuffer[i] =(char)clipPixel(std::abs(fBuffer[i]));
-    }
-}
 
 unsigned char * canny(unsigned char* buffer, int width, int height, float scale, float lower, float upper){
     float xSobel[] = {1,0,-1, 2,0,-2, 1,0,-1};
@@ -127,13 +121,6 @@ unsigned char * canny(unsigned char* buffer, int width, int height, float scale,
             imageAngels[j + i * width] = std::atan2(yConv[j + i * width], xConv[j + i * width]) * (180/M_PI); 
         }
     }
-    unsigned char *xConvChar = new unsigned char[width * height];
-    unsigned char *yConvChar = new unsigned char[width * height];
-    convertFloatToChar(xConv, xConvChar, width * height);
-    convertFloatToChar(yConv, yConvChar, width * height);
-    stbi_write_png("res/textures/gradX.png", width, height, 1, xConvChar, width);
-    stbi_write_png("res/textures/grady.png", width, height, 1, yConvChar, width);
-    stbi_write_png("res/textures/grad.png", width, height, 1, imageGradients, width);
 
     //Non-max suppresion
     for(int i = 0; i < height; i++){
@@ -181,7 +168,6 @@ unsigned char * canny(unsigned char* buffer, int width, int height, float scale,
         }
     }
 
-    stbi_write_png("res/textures/nonmax.png", width, height, 1, imageOutlines, width);
     
     //Hysteresis
     for(int i = h; i < height - h; i++){
