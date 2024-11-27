@@ -13,6 +13,7 @@
 #define GREEN_WEIGHT 0.5870
 #define BLUE_WEIGHT 0.1140
 
+// canny constants
 #define WHITE 255
 #define BLACK 0
 #define NON_RELEVANT 0
@@ -63,6 +64,7 @@ int main(void)
     delete [] greyBuffer;
     delete [] cannyBuffer;
     delete [] halfBuff;
+    delete fsBuffer;
     return 0;
 }
 
@@ -299,6 +301,7 @@ unsigned char * fsErrorDiffDithering(unsigned char * buffer, int width, int heig
             }
         }
     }
+    delete [] diffused;
     return result;
  }
  
